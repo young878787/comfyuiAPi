@@ -1,0 +1,59 @@
+# Python 編譯文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虛擬環境
+venv/
+env/
+ENV/
+github/
+
+# 日誌文件
+logs/
+sessions/
+
+# 環境變數
+.env
+.env.local
+
+# IDE 設置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 資料庫
+*.db
+*.sqlite
+*.sqlite3
+fastapi_project/discord_tokens.json
+
+# 測試
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 分發
+dist/
+build/
+*.egg-info/
+
+# OS 相關
+.DS_Store
+Thumbs.db
+
+# 模型文件（太大不提交）
+AImodel/
+*.safetensors
+*.bin
+*.ckpt
+
+# 臨時文件
+tmp/
+temp/
+*.tmp
+.github
+sample/

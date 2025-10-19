@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ComfyUI AI Chat - 角色設計助手">
+    <title>ComfyUI AI Chat - 角色設計助手</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" defer>
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" defer>
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <!-- 動漫風格主題 v2.1 - 粉色系溫馨設計（修復版） -->
+    <link href="/static/css/anime-theme-v2.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <!-- Session Sidebar -->
+            <aside class="col-md-2 bg-light border-end p-2 session-sidebar">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0 fw-600">對話列表</h6>
+                    <button class="btn btn-sm btn-primary" id="createSessionBtn" title="新增對話" aria-label="新增對話">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+                <div id="sessionList" class="list-group">
+                    <!-- Sessions will be loaded here -->
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="col-md-10 d-flex flex-column p-0">
+                <!-- Header -->
+                <header class="bg-white border-bottom p-2 flex-shrink-0">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1 id="sessionTitle" class="mb-0 h5">ComfyUI AI 角色設計助手</h1>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="操作按鈕">
+                            <button class="btn btn-outline-secondary" id="editTitleBtn" title="編輯標題" aria-label="編輯標題">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" id="deleteSessionBtn" title="刪除對話" aria-label="刪除對話">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Tab Navigation -->
+                <nav class="nav nav-tabs px-2 flex-shrink-0" id="mainTabs" role="tablist">
+                    <button class="nav-link active" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-panel" type="button" role="tab" aria-controls="chat-panel" aria-selected="true">
+                        <i class="bi bi-chat-dots me-1"></i><span class="d-none d-sm-inline">AI 對話</span>
+                    </button>
+                    <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image-panel" type="button" role="tab" aria-controls="image-panel" aria-selected="false">
+                        <i class="bi bi-image me-1"></i><span class="d-none d-sm-inline">圖片生成</span>
+                    </button>
+                </nav>
+
+                <!-- Tab Content -->
+                <div class="tab-content flex-grow-1 overflow-hidden" id="mainTabsContent">
+                    <!-- Chat Panel -->
+                    <div class="tab-pane fade show active h-100" id="chat-panel" role="tabpanel" aria-labelledby="chat-tab">
+                        <div class="chat-container">
+                            <div class="chat-messages-wrapper">
+                                <div id="chatMessages" class="chat-messages-scroll">
+                                    <div class="text-center text-muted py-5">
+                                        <i class="bi bi-chat-text" style="font-size: 2.5rem;"></i>
+                                        <p class="mt-2 small">開始與 AI 對話</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chat-input-fixed">
+                                <div class="chat-input-container">
+                                    <textarea 
+                                        class="chat-textarea" 
+                                        id="messageInput" 
+                                        placeholder="描述你想設計的角色..."
+                                        rows="2"
+                                        aria-label="訊息輸入框"></textarea>
+                                    <button class="chat-send-button" id="sendMessageBtn" title="發送訊息 (Ctrl+Enter)" aria-label="發送訊息">
+                                        <i class="bi bi-send"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Generation Panel -->
+                    <div class="tab-pane fade h-100" id="image-panel" role="tabpanel" aria-labelledby="image-tab">
+                        <div class="image-generation-container">
+                            <!-- Parameters Column -->
+                            <div class="image-params-column">
+                                <div class="image-params-header">
+                                    <h5>生成參數</h5>
+                                </div>
+                                <div class="image-params-scroll">
+                                    <form id="imageForm" class="image-form">
+                                        <div class="form-group">
+                                            <label for="positivePrompt" class="form-label">正向提示詞</label>
+                                            <textarea class="form-control" id="positivePrompt" rows="3" placeholder="輸入正向提示詞..." aria-label="正向提示詞"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="negativePrompt" class="form-label">負向提示詞</label>
+                                            <textarea class="form-control" id="negativePrompt" rows="2" placeholder="輸入負向提示詞..." aria-label="負向提示詞">realistic, photorealistic, low quality</textarea>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="imageWidth" class="form-label">寬度</label>
+                                                <input type="number" class="form-control" id="imageWidth" value="608" min="256" max="2048" step="8" aria-label="圖片寬度">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="imageHeight" class="form-label">高度</label>
+                                                <input type="number" class="form-control" id="imageHeight" value="1328" min="256" max="2048" step="8" aria-label="圖片高度">
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="imageSteps" class="form-label">Steps</label>
+                                                <input type="number" class="form-control" id="imageSteps" value="12" min="1" max="100" aria-label="生成步數">
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="imageCfg" class="form-label">CFG</label>
+                                                <input type="number" class="form-control" id="imageCfg" value="1.0" min="0.1" max="30" step="0.1" aria-label="無分類引導強度">
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="imageSeed" class="form-label">Seed</label>
+                                            <input type="number" class="form-control" id="imageSeed" placeholder="留空為隨機" aria-label="隨機種子">
+                                        </div>
+                                        <button type="button" class="btn-generate" id="generateImageBtn" aria-label="生成圖片">
+                                            <i class="bi bi-magic me-1"></i>生成圖片
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <!-- Results Column -->
+                            <div class="image-result-column">
+                                <div class="image-result-header">
+                                    <h5>生成結果</h5>
+                                </div>
+                                <div class="image-result-scroll">
+                                    <div id="imageResult" class="image-result-content">
+                                        <div class="text-center text-muted">
+                                            <i class="bi bi-image" style="font-size: 2.5rem;"></i>
+                                            <p class="mt-2 small">填寫參數後點擊「生成圖片」</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    <!-- 動漫風格動畫效果 -->
+    <script src="/static/js/anime-effects.js" defer></script>
+    <!-- 代碼塊增強（複製按鈕、橫向滾動） -->
+    <script src="/static/js/code-enhancer.js" defer></script>
+    <!-- Custom JS -->
+    <script src="/static/js/app.js" defer></script>
+</body>
+</html>

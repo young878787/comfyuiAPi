@@ -1,0 +1,492 @@
+/* ===== ComfyUI AI Chat - 優化版本 ===== */
+
+/* 基礎設定 */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+}
+
+/* 確保 container-fluid 沒有滾動 */
+.container-fluid {
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 確保 row 沒有滾動 */
+.container-fluid > .row {
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ===== 側邊欄 ===== */
+.session-sidebar {
+    height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Main content area */
+main {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.session-item {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.session-item:hover {
+    background-color: #e9ecef;
+}
+
+.session-item.active {
+    background-color: #0d6efd;
+    color: white;
+}
+
+/* ===== 聊天訊息 ===== */
+#chatMessages {
+    background-color: #f8f9fa;
+}
+
+.message {
+    margin-bottom: 0.75rem;
+    animation: fadeIn 0.25s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message-user {
+    text-align: right;
+}
+
+.message-user .message-content {
+    display: inline-block;
+    max-width: 75%;
+    background-color: #0d6efd;
+    color: white;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.875rem;
+    border-bottom-right-radius: 0.125rem;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+}
+
+.message-assistant {
+    text-align: left;
+}
+
+.message-assistant .message-content {
+    display: inline-block;
+    max-width: 85%;
+    background-color: white;
+    padding: 0.5rem 0.875rem;
+    border-radius: 0.875rem;
+    border-bottom-left-radius: 0.125rem;
+    border: 1px solid #dee2e6;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+}
+
+/* Markdown 樣式 */
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+    margin: 0.75rem 0 0.375rem 0;
+    font-weight: 600;
+}
+
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+    margin: 0.5rem 0 0.25rem 0;
+    font-weight: 600;
+}
+
+.message-content h1:first-child,
+.message-content h2:first-child,
+.message-content h3:first-child {
+    margin-top: 0;
+}
+
+.message-content ul,
+.message-content ol {
+    margin-bottom: 0.375rem;
+    padding-left: 1.25rem;
+    margin-top: 0;
+}
+
+.message-content li {
+    margin-bottom: 0.125rem;
+}
+
+.message-content code {
+    background-color: #f8f9fa;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+}
+
+.message-content pre {
+    background-color: #2d2d2d;
+    color: #f8f8f2;
+    padding: 0.625rem;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+    margin: 0.375rem 0;
+    font-size: 0.8125rem;
+}
+
+.message-content pre code {
+    background-color: transparent;
+    color: inherit;
+    padding: 0;
+}
+
+.message-timestamp {
+    font-size: 0.7rem;
+    color: #999;
+    margin-top: 0.125rem;
+}
+
+/* 加載動畫 */
+.loading-spinner {
+    display: inline-block;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 1.5px solid rgba(13, 110, 253, 0.2);
+    border-top-color: #0d6efd;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===== 圖片結果 ===== */
+#imageResult {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+#imageResult img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.375rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-top: 0.75rem;
+}
+
+.image-metadata {
+    font-size: 0.8125rem;
+    color: #999;
+    margin-top: 0.375rem;
+}
+
+/* ===== Tab 佈局 ===== */
+.tab-content {
+    background-color: white;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.tab-pane {
+    display: none !important;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.tab-pane.active {
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tab-pane.show {
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ===== 聊天面板 ===== */
+#chat-panel {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#chatMessages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+#chat-panel .border-top {
+    padding: 0.75rem 1rem !important;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* ===== 圖片生成面板 ===== */
+#image-panel {
+    width: 100%;
+    height: 100%;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+
+#image-panel > .row {
+    flex: 1 1 auto;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0;
+    max-height: 100%;
+    box-sizing: border-box;
+    gap: 0;
+}
+
+/* 左側 - 參數區 */
+#image-panel .col-lg-5 {
+    width: 41.66667%;
+    flex: 0 0 41.66667%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    padding: 0 !important;
+    border-right: 1px solid #e0e0e0;
+    box-sizing: border-box;
+}
+
+#image-panel .col-lg-5 > div {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1.25rem;
+    box-sizing: border-box;
+}
+
+#image-panel .col-lg-5 h5 {
+    margin: 0 0 0.875rem 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* 右側 - 結果區 */
+#image-panel .col-lg-7 {
+    width: 58.33333%;
+    flex: 0 0 58.33333%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+    padding: 1.25rem !important;
+    box-sizing: border-box;
+    background-color: #fafafa;
+}
+
+#image-panel .col-lg-7 > h5 {
+    flex-shrink: 0;
+    margin: 0 0 0.875rem 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+#image-panel .col-lg-7 > #imageResult {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+/* ===== 表單優化 ===== */
+#image-panel form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+#image-panel form > * {
+    flex-shrink: 0;
+}
+
+#image-panel .mb-3 {
+    margin-bottom: 0.625rem !important;
+    flex-shrink: 0;
+}
+
+#image-panel .form-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    margin-bottom: 0.375rem;
+    flex-shrink: 0;
+}
+
+#image-panel .form-control,
+#image-panel .form-select {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.625rem;
+    border-radius: 0.25rem;
+    border: 1px solid #d0d0d0;
+    height: auto;
+    flex-shrink: 0;
+}
+
+#image-panel .form-control:focus,
+#image-panel .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
+}
+
+#image-panel textarea.form-control {
+    resize: vertical;
+    min-height: 60px;
+    max-height: 100px;
+}
+
+#image-panel form .row {
+    margin: 0 -0.3125rem;
+    display: flex;
+    flex-shrink: 0;
+}
+
+#image-panel form .row > div {
+    padding: 0 0.3125rem;
+}
+
+/* ===== 按鈕優化 ===== */
+.btn {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0b5ed7;
+}
+
+.btn-success:hover {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+/* ===== 導航欄 ===== */
+.nav-tabs {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.nav-tabs .nav-link {
+    color: #666;
+    font-size: 0.875rem;
+    padding: 0.625rem 1rem;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #0d6efd;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+}
+
+/* ===== 響應式優化 ===== */
+@media (max-width: 768px) {
+    #image-panel .col-lg-5,
+    #image-panel .col-lg-7 {
+        width: 100% !important;
+        flex: 0 0 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    #image-panel > .row {
+        flex-direction: column;
+    }
+}
+
+/* ===== 懸停效果優化 ===== */
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+/* ===== 輸入框狀態 ===== */
+.form-control:disabled,
+.form-select:disabled {
+    background-color: #f0f0f0;
+    color: #999;
+}
+
+/* ===== 選擇欄樣式 ===== */
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.fw-600 {
+    font-weight: 600;
+}
