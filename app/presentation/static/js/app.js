@@ -378,7 +378,7 @@ async function generateImage() {
     isGenerating = true;
     
     const resultDiv = document.getElementById('imageResult');
-    resultDiv.innerHTML = '<div class="text-center"><span class="loading-spinner"></span><p class="mt-3">圖片生成中,請稍候...</p></div>';
+    resultDiv.innerHTML = '<div class="text-center text-muted"><span class="loading-spinner" style="margin: 0 auto;"></span></div>';
     
     // 顯示自訂加載動畫
     if (window.loadingIndicator) {
