@@ -362,6 +362,8 @@ header {
     transition: all var(--transition-fast);
     min-height: 48px;
     max-height: 200px;
+    overflow-y: auto;
+    line-height: 1.5;
 }
 
 .chat-textarea:focus {

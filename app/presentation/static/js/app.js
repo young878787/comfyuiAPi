@@ -7,12 +7,20 @@ let isGenerating = false;
 document.addEventListener('DOMContentLoaded', function() {
     loadSessions();
     
+    // Initialize textarea auto-resize
+    const textarea = document.getElementById('messageInput');
+    if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+    
     // Bind event listeners
     document.getElementById('createSessionBtn').addEventListener('click', createSession);
     document.getElementById('editTitleBtn').addEventListener('click', editSessionTitle);
     document.getElementById('deleteSessionBtn').addEventListener('click', deleteCurrentSession);
     document.getElementById('sendMessageBtn').addEventListener('click', sendMessage);
     document.getElementById('messageInput').addEventListener('keydown', handleMessageKeydown);
+    document.getElementById('messageInput').addEventListener('input', autoResizeTextarea);
     document.getElementById('generateImageBtn').addEventListener('click', generateImage);
 });
 
@@ -267,6 +275,7 @@ async function sendMessage() {
     // Add user message to UI
     appendMessage('user', message, new Date().toISOString());
     input.value = '';
+    resetTextareaHeight();
     scrollToBottom();
     
     // Show loading indicator
@@ -320,10 +329,34 @@ async function sendMessage() {
 }
 
 function handleMessageKeydown(event) {
-    // Send message on Ctrl+Enter or Cmd+Enter
-    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+    // Send message on Enter (unless Shift is pressed for newline)
+    if (event.key === 'Enter') {
+        if (event.shiftKey) {
+            // Allow Shift+Enter for newline
+            return;
+        }
+        // Enter to send
         event.preventDefault();
         sendMessage();
+    }
+}
+
+function autoResizeTextarea() {
+    const textarea = document.getElementById('messageInput');
+    if (!textarea) return;
+    
+    // Reset height to calculate scrollHeight correctly
+    textarea.style.height = 'auto';
+    
+    // Set new height based on scrollHeight, capped at max-height (200px)
+    const newHeight = Math.min(textarea.scrollHeight, 200);
+    textarea.style.height = newHeight + 'px';
+}
+
+function resetTextareaHeight() {
+    const textarea = document.getElementById('messageInput');
+    if (textarea) {
+        textarea.style.height = 'auto';
     }
 }
 
