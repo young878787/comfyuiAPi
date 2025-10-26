@@ -14,6 +14,9 @@ github/
 logs/
 sessions/
 
+# 臨時上傳圖片
+tmp/
+
 # 環境變數
 .env
 .env.local

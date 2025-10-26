@@ -358,9 +358,9 @@ async def generate_with_image(
     temp_image_path = None
     
     try:
-        # 保存臨時圖片
-        temp_dir = Path("/tmp/qwen3vl_uploads")
-        temp_dir.mkdir(exist_ok=True)
+        # 保存臨時圖片 (相對路徑，在專案目錄下)
+        temp_dir = Path("../tmp/qwen3vl_uploads")
+        temp_dir.mkdir(parents=True, exist_ok=True)
         
         temp_image_path = temp_dir / f"{image.filename}"
         

@@ -2,6 +2,7 @@
 
 let currentSessionId = null;
 let isGenerating = false;
+let uploadedImage = null; // Store uploaded image
 
 // Initialize app on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -22,6 +23,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('messageInput').addEventListener('keydown', handleMessageKeydown);
     document.getElementById('messageInput').addEventListener('input', autoResizeTextarea);
     document.getElementById('generateImageBtn').addEventListener('click', generateImage);
+    
+    // Image upload listeners
+    document.getElementById('attachImageBtn').addEventListener('click', () => {
+        document.getElementById('imageUpload').click();
+    });
+    document.getElementById('imageUpload').addEventListener('change', handleImageSelect);
+    document.getElementById('removeImageBtn').addEventListener('click', removeImage);
+    
+    // Drag and drop listeners
+    setupDragAndDrop();
 });
 
 // ===== Session Management =====
@@ -229,7 +240,12 @@ function appendMessage(role, content, timestamp) {
         // Render markdown for assistant messages
         contentDiv.innerHTML = marked.parse(content);
     } else {
-        contentDiv.textContent = content;
+        // For user messages, check if content contains HTML (image indicator)
+        if (content.includes('<div class="message-image-indicator">')) {
+            contentDiv.innerHTML = content;
+        } else {
+            contentDiv.textContent = content;
+        }
     }
     
     const timeDiv = document.createElement('div');
@@ -272,8 +288,18 @@ async function sendMessage() {
     input.disabled = true;
     isGenerating = true;
     
+    // Save image reference and hide preview immediately
+    const hasImage = uploadedImage !== null;
+    const imageToSend = uploadedImage;
+    if (hasImage) {
+        removeImage(); // Hide image preview immediately after clicking send
+    }
+    
     // Add user message to UI
-    appendMessage('user', message, new Date().toISOString());
+    const userMessageContent = hasImage 
+        ? `<div class="message-image-indicator"><i class="bi bi-image-fill"></i> 已附加圖片</div>${escapeHtml(message)}`
+        : escapeHtml(message);
+    appendMessage('user', userMessageContent, new Date().toISOString());
     input.value = '';
     resetTextareaHeight();
     scrollToBottom();
@@ -287,16 +313,32 @@ async function sendMessage() {
     scrollToBottom();
     
     try {
-        const response = await fetch('/api/chat/send', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                session_id: currentSessionId,
-                message: message
-            })
-        });
+        let response;
+        
+        if (hasImage && imageToSend) {
+            // Send with image using FormData
+            const formData = new FormData();
+            formData.append('session_id', currentSessionId);
+            formData.append('message', message);
+            formData.append('image', imageToSend);
+            
+            response = await fetch('/api/chat/send-with-image', {
+                method: 'POST',
+                body: formData
+            });
+        } else {
+            // Send text only
+            response = await fetch('/api/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    session_id: currentSessionId,
+                    message: message
+                })
+            });
+        }
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -563,4 +605,100 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ===== Image Upload Functions =====
+
+function handleImageSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        previewImage(file);
+    }
+}
+
+function previewImage(file) {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        showError('請選擇圖片檔案');
+        return;
+    }
+    
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showError('圖片大小不能超過 10MB');
+        return;
+    }
+    
+    uploadedImage = file;
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('imagePreview').src = e.target.result;
+        document.getElementById('imagePreviewContainer').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeImage() {
+    uploadedImage = null;
+    
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    // Add fade out animation
+    previewContainer.style.opacity = '0';
+    previewContainer.style.transform = 'translateY(-10px)';
+    
+    setTimeout(() => {
+        document.getElementById('imagePreview').src = '';
+        previewContainer.style.display = 'none';
+        previewContainer.style.opacity = '1';
+        previewContainer.style.transform = 'translateY(0)';
+        document.getElementById('imageUpload').value = '';
+    }, 200);
+}
+
+function setupDragAndDrop() {
+    const chatPanel = document.getElementById('chat-panel');
+    const inputContainer = document.getElementById('chatInputContainer');
+    
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        chatPanel.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Highlight drop area
+    ['dragenter', 'dragover'].forEach(eventName => {
+        chatPanel.addEventListener(eventName, () => {
+            inputContainer.classList.add('drag-over');
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        chatPanel.addEventListener(eventName, () => {
+            inputContainer.classList.remove('drag-over');
+        });
+    });
+    
+    // Handle dropped files
+    chatPanel.addEventListener('drop', handleDrop, false);
+}
+
+function handleDrop(e) {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith('image/')) {
+            previewImage(file);
+        } else {
+            showError('請拖放圖片檔案');
+        }
+    }
 }

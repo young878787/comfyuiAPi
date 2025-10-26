@@ -72,11 +72,25 @@
                                 </div>
                             </div>
                             <div class="chat-input-fixed">
-                                <div class="chat-input-container">
+                                <!-- Image Preview Area -->
+                                <div id="imagePreviewContainer" class="image-preview-container" style="display: none;">
+                                    <div class="image-preview-wrapper">
+                                        <img id="imagePreview" src="" alt="預覽圖片">
+                                        <button class="image-preview-remove" id="removeImageBtn" title="移除圖片">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="chat-input-container" id="chatInputContainer">
+                                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                                    <button class="chat-attach-button" id="attachImageBtn" title="上傳圖片">
+                                        <i class="bi bi-image"></i>
+                                    </button>
                                     <textarea 
                                         class="chat-textarea" 
                                         id="messageInput" 
-                                        placeholder="描述你想設計的角色..."
+                                        placeholder="描述你想設計的角色... (可以附加圖片)"
                                         rows="2"
                                         aria-label="訊息輸入框"></textarea>
                                     <button class="chat-send-button" id="sendMessageBtn" title="發送訊息 (Ctrl+Enter)" aria-label="發送訊息">

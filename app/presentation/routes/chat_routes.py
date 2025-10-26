@@ -1,7 +1,7 @@
 """Chat conversation routes."""
 
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
+from typing import List, Optional
 
 from app.application.dtos.common import (
     ChatSendRequest,
@@ -38,6 +38,34 @@ async def send_message(
             role=message.role,
             content=message.content,
             timestamp=message.timestamp
+        )
+    except SessionNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except APIError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@router.post("/send-with-image", response_model=MessageResponse)
+async def send_message_with_image(
+    session_id: str = Form(...),
+    message: str = Form(...),
+    image: UploadFile = File(...),
+    service: ChatService = Depends(get_chat_service)
+):
+    """Send a chat message with image and get AI response."""
+    try:
+        result_message = await service.send_message_with_image(
+            session_id=session_id,
+            user_message=message,
+            image_file=image
+        )
+        return MessageResponse(
+            id=result_message.id,
+            role=result_message.role,
+            content=result_message.content,
+            timestamp=result_message.timestamp
         )
     except SessionNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
