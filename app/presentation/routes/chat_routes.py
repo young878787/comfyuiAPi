@@ -11,7 +11,7 @@ from app.application.dtos.common import (
 from app.application.services.chat_service import ChatService
 from app.application.services.session_service import SessionService
 from app.infrastructure.repositories.session_repository import SessionRepository
-from app.infrastructure.adapters.github_model_adapter import GitHubModelAdapter
+from app.infrastructure.adapters.qwen3vl_adapter import Qwen3VLAdapter
 from app.domain.exceptions import SessionNotFoundError, APIError
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -20,9 +20,9 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 def get_chat_service() -> ChatService:
     """Dependency to get chat service."""
     session_repository = SessionRepository()
-    github_adapter = GitHubModelAdapter()
+    qwen3vl_adapter = Qwen3VLAdapter()
     session_service = SessionService(session_repository)
-    return ChatService(session_repository, github_adapter, session_service)
+    return ChatService(session_repository, qwen3vl_adapter, session_service)
 
 
 @router.post("/send", response_model=MessageResponse)

@@ -24,7 +24,7 @@ class GitHubModelAdapter:
         self,
         messages: List[Dict[str, str]],
         temperature: float = 1.0,
-        max_tokens: int = 4096
+        max_tokens: Optional[int] = None
     ) -> str:
         """
         Generate AI response using GitHub Models API.
@@ -32,7 +32,7 @@ class GitHubModelAdapter:
         Args:
             messages: List of message dictionaries with 'role' and 'content'
             temperature: Sampling temperature
-            max_tokens: Maximum tokens in response
+            max_tokens: Maximum tokens in response (defaults to settings)
             
         Returns:
             str: AI generated response content
@@ -49,7 +49,7 @@ class GitHubModelAdapter:
             "messages": messages,
             "model": self.model,
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": max_tokens or settings.qwen3vl_max_tokens,  # 使用配置的預設值
             "top_p": 1
         }
         

@@ -8,8 +8,9 @@ from datetime import datetime
 from app.domain.models import Message
 from app.domain.models.prompt_template import CHARACTER_DESIGNER_TEMPLATE
 from app.infrastructure.repositories.session_repository import SessionRepository
-from app.infrastructure.adapters.github_model_adapter import GitHubModelAdapter
+from app.infrastructure.adapters.qwen3vl_adapter import Qwen3VLAdapter
 from app.application.services.session_service import SessionService
+from app.infrastructure.logging import get_message_logger
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class ChatService:
     def __init__(
         self,
         session_repository: SessionRepository,
-        github_adapter: GitHubModelAdapter,
+        qwen3vl_adapter: Qwen3VLAdapter,
         session_service: SessionService
     ):
         """
@@ -28,11 +29,11 @@ class ChatService:
         
         Args:
             session_repository: Session repository
-            github_adapter: GitHub Models API adapter
+            qwen3vl_adapter: Qwen3VL API adapter
             session_service: Session service
         """
         self.session_repository = session_repository
-        self.github_adapter = github_adapter
+        self.qwen3vl_adapter = qwen3vl_adapter
         self.session_service = session_service
         self.prompt_template = CHARACTER_DESIGNER_TEMPLATE
     
@@ -60,16 +61,23 @@ class ChatService:
         
         messages.append(user_msg)
         
+        # 記錄用戶訊息到 message.log
+        msg_logger = get_message_logger()
+        msg_logger.log_user_message(
+            session_id=session_id,
+            content=user_message
+        )
+        
         # Build context for AI
         api_messages = self._build_api_messages(messages)
         
         # Get AI response
-        logger.info("Requesting AI response", extra={
+        logger.info("Requesting AI response from Qwen3VL", extra={
             "session_id": session_id,
             "message_count": len(api_messages)
         })
         
-        ai_content = await self.github_adapter.generate_response(
+        ai_content, raw_content, tokens, gen_time = await self.qwen3vl_adapter.generate_response(
             api_messages,
             temperature=self.prompt_template.temperature,
             max_tokens=self.prompt_template.max_tokens
@@ -81,10 +89,21 @@ class ChatService:
             role="assistant",
             content=ai_content,
             timestamp=datetime.now(),
-            metadata={"model": self.prompt_template.model}
+            metadata={"model": "Qwen3-VL-4B-Thinking"}
         )
         
         messages.append(assistant_msg)
+        
+        # 記錄 AI 回應到 message.log
+        msg_logger = get_message_logger()
+        msg_logger.log_ai_response(
+            session_id=session_id,
+            content=ai_content,
+            model="Qwen3-VL-4B-Thinking",
+            tokens=tokens,
+            generation_time=gen_time,
+            raw_content=raw_content
+        )
         
         # Save messages
         await self.session_repository.save_messages(session_id, messages)

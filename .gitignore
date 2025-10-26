@@ -46,7 +46,7 @@ build/
 Thumbs.db
 
 # 模型文件（太大不提交）
-AImodel/
+AImodels/
 *.safetensors
 *.bin
 *.ckpt

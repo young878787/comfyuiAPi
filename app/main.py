@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.presentation.routes import session_routes, chat_routes, image_routes
+from app.infrastructure.logging import get_message_logger, clear_message_log
 
 # Ensure log directory exists
 log_file_path = Path(settings.log_file)
@@ -29,6 +30,11 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Initialize and clear message logger on startup
+message_logger = get_message_logger(settings.message_log_file)
+message_logger.clear_log()
+logger.info(f"Message log initialized at {settings.message_log_file}")
 
 # Create FastAPI app
 app = FastAPI(
