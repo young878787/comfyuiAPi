@@ -1,0 +1,299 @@
+{
+  "name": "ComfyUI AI Chat - 完整對話流程",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook 接收訊息",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "comfyui-chat"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8000/api/sessions",
+        "options": {}
+      },
+      "id": "list-sessions",
+      "name": "列出所有 Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 取得今天日期作為 Session 標題\nconst today = new Date();\nconst year = today.getFullYear();\nconst month = String(today.getMonth() + 1).padStart(2, '0');\nconst day = String(today.getDate()).padStart(2, '0');\nconst todayTitle = `${year}${month}${day}`;\n\n// 取得所有 Session\nconst sessions = $input.all()[0].json;\n\n// 檢查是否已有今天的 Session\nlet todaySession = null;\nif (Array.isArray(sessions)) {\n  todaySession = sessions.find(s => s.title === todayTitle);\n}\n\n// 取得用戶輸入\nconst userMessage = $('Webhook 接收訊息').item.json.body.message || '';\nconst generateImage = $('Webhook 接收訊息').item.json.body.generate_image || false;\n\nreturn {\n  json: {\n    today_title: todayTitle,\n    session_exists: !!todaySession,\n    session_id: todaySession?.id || null,\n    user_message: userMessage,\n    generate_image: generateImage\n  }\n};"
+      },
+      "id": "check-today-session",
+      "name": "檢查今天的 Session",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.session_exists }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-session-exists",
+      "name": "Session 是否存在?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/sessions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\"title\": $json.today_title} }}",
+        "options": {}
+      },
+      "id": "create-session",
+      "name": "創建今天的 Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 整合 Session ID\nconst checkResult = $('檢查今天的 Session').item.json;\nlet sessionId = checkResult.session_id;\n\n// 如果是新建的 Session\nif ($input.all()[0].json.id) {\n  sessionId = $input.all()[0].json.id;\n}\n\nreturn {\n  json: {\n    session_id: sessionId,\n    user_message: checkResult.user_message,\n    generate_image: checkResult.generate_image\n  }\n};"
+      },
+      "id": "merge-session-id",
+      "name": "整合 Session ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/chat/send",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"session_id\": $json.session_id,\n  \"message\": $json.user_message\n} }}",
+        "options": {}
+      },
+      "id": "send-chat-message",
+      "name": "發送聊天訊息",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 處理 AI 回應\nconst response = $input.all()[0].json;\nconst sessionData = $('整合 Session ID').item.json;\n\n// 提取關鍵資訊\nconst aiResponse = response.content || '';\nconst messageId = response.id;\nconst timestamp = response.timestamp;\n\n// 檢查是否包含 ComfyUI 提示詞標記\nconst hasPrompt = aiResponse.includes('**正向提示詞:**') || aiResponse.includes('ComfyUI 提示詞');\n\n// 嘗試提取提示詞\nlet positivePrompt = '';\nlet negativePrompt = '';\n\nif (hasPrompt) {\n  // 提取正向提示詞\n  const positiveMatch = aiResponse.match(/\\*\\*正向提示詞:\\*\\*[\\s\\S]*?```([\\s\\S]*?)```/);\n  if (positiveMatch) {\n    positivePrompt = positiveMatch[1].trim();\n  }\n  \n  // 提取負向提示詞\n  const negativeMatch = aiResponse.match(/\\*\\*負向提示詞:\\*\\*[\\s\\S]*?```([\\s\\S]*?)```/);\n  if (negativeMatch) {\n    negativePrompt = negativeMatch[1].trim();\n  }\n}\n\nreturn {\n  json: {\n    session_id: sessionData.session_id,\n    message_id: messageId,\n    ai_response: aiResponse,\n    timestamp: timestamp,\n    has_prompt: hasPrompt,\n    positive_prompt: positivePrompt,\n    negative_prompt: negativePrompt,\n    should_generate_image: sessionData.generate_image && hasPrompt\n  }\n};"
+      },
+      "id": "process-ai-response",
+      "name": "處理 AI 回應",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.should_generate_image }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-should-generate",
+      "name": "是否生成圖片?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/image/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"session_id\": $json.session_id,\n  \"positive_prompt\": $json.positive_prompt,\n  \"negative_prompt\": $json.negative_prompt || \"\",\n  \"width\": 608,\n  \"height\": 1328,\n  \"steps\": 12,\n  \"cfg\": 1.0,\n  \"seed\": null,\n  \"sampler\": \"dpmpp_2m_sde_gpu\",\n  \"scheduler\": \"simple\"\n} }}",
+        "options": {}
+      },
+      "id": "generate-image",
+      "name": "生成圖片 (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2220, 180]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 整合最終結果\nconst aiData = $('處理 AI 回應').item.json;\nconst imageData = $input.all()[0]?.json || null;\n\nlet result = {\n  success: true,\n  session_id: aiData.session_id,\n  message_id: aiData.message_id,\n  ai_response: aiData.ai_response,\n  timestamp: aiData.timestamp,\n  image_generated: false\n};\n\nif (imageData) {\n  result.image_generated = true;\n  result.image_filename = imageData.filename;\n  result.image_url = `http://localhost:8000${imageData.url}`;\n}\n\nreturn { json: result };"
+      },
+      "id": "merge-final-result",
+      "name": "整合最終結果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "respond-to-webhook",
+      "name": "返回結果",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2660, 300]
+    }
+  ],
+  "connections": {
+    "Webhook 接收訊息": {
+      "main": [
+        [
+          {
+            "node": "列出所有 Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "列出所有 Session": {
+      "main": [
+        [
+          {
+            "node": "檢查今天的 Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "檢查今天的 Session": {
+      "main": [
+        [
+          {
+            "node": "Session 是否存在?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Session 是否存在?": {
+      "main": [
+        [
+          {
+            "node": "整合 Session ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "創建今天的 Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "創建今天的 Session": {
+      "main": [
+        [
+          {
+            "node": "整合 Session ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整合 Session ID": {
+      "main": [
+        [
+          {
+            "node": "發送聊天訊息",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "發送聊天訊息": {
+      "main": [
+        [
+          {
+            "node": "處理 AI 回應",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "處理 AI 回應": {
+      "main": [
+        [
+          {
+            "node": "是否生成圖片?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否生成圖片?": {
+      "main": [
+        [
+          {
+            "node": "生成圖片 (API)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "整合最終結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "生成圖片 (API)": {
+      "main": [
+        [
+          {
+            "node": "整合最終結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "整合最終結果": {
+      "main": [
+        [
+          {
+            "node": "返回結果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
