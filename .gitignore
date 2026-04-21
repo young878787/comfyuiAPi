@@ -5,22 +5,32 @@ __pycache__/
 *.so
 
 # 虛擬環境
+.venv/
 venv/
 env/
 ENV/
-github/
 
 # 日誌文件
 logs/
-sessions/
+*.log
 
-# 環境變數
+# 執行期資料（不提交）
+sessions/
+outputs/
+output/
+tmp/
+temp/
+*.tmp
+
+# 環境變數（保密）
 .env
 .env.local
+.env.*.local
 
 # IDE 設置
 .vscode/
 .idea/
+.superpowers/
 *.swp
 *.swo
 *~
@@ -29,31 +39,26 @@ sessions/
 *.db
 *.sqlite
 *.sqlite3
-fastapi_project/discord_tokens.json
 
 # 測試
 .pytest_cache/
 .coverage
 htmlcov/
 
-# 分發
-dist/
+# Python 分發
 build/
 *.egg-info/
+
+# Node / 前端
+node_modules/
+frontend/dist/
 
 # OS 相關
 .DS_Store
 Thumbs.db
 
-# 模型文件（太大不提交）
+# 模型文件（體積過大）
 AImodel/
 *.safetensors
 *.bin
 *.ckpt
-
-# 臨時文件
-tmp/
-temp/
-*.tmp
-.github
-sample/

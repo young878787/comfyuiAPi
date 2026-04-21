@@ -6,13 +6,14 @@ from typing import List, Dict, Any, Optional
 
 from app.config import settings
 from app.domain.exceptions import APIError
+from app.infrastructure.adapters.base_ai_adapter import BaseAIAdapter
 
 logger = logging.getLogger(__name__)
 
 
-class GitHubModelAdapter:
-    """Adapter for GitHub Models API (GPT-4o)."""
-    
+class GitHubModelAdapter(BaseAIAdapter):
+    """Adapter for GitHub Models API (OpenAI-compatible endpoint)."""
+
     def __init__(self):
         """Initialize the adapter with configuration."""
         self.api_url = settings.github_api_url
@@ -22,7 +23,7 @@ class GitHubModelAdapter:
     
     async def generate_response(
         self,
-        messages: List[Dict[str, str]],
+        messages: List[Dict[str, Any]],
         temperature: float = 1.0,
         max_tokens: int = 4096
     ) -> str:

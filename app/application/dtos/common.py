@@ -31,6 +31,8 @@ class ChatSendRequest(BaseModel):
     """Request to send a chat message."""
     session_id: str
     message: str = Field(..., min_length=1, max_length=5000)
+    image_base64: Optional[str] = None
+    image_mime_type: Optional[str] = "image/jpeg"
 
 
 class MessageResponse(BaseModel):

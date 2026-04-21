@@ -1,254 +1,224 @@
 # ComfyUI AI Chat - 角色設計助手
 
-基於 GitHub Models (GPT-4o) 和 ComfyUI 的 AI 圖像生成對話系統。
+基於 FastAPI + Vue 3 的 AI 角色設計對話與圖片生成系統，支援 GitHub Models / Google AI 多模態對話，並整合 ComfyUI 進行高品質圖片生成。
 
 ## 功能特色
 
-- 📝 **AI 對話** - 與青少女角色設計師對話,獲得專業的角色設計建議
-- 🎨 **圖片生成** - 使用 ComfyUI 生成高品質角色圖片
-- 💾 **Session 管理** - 支援多個對話 Session,保存完整聊天記錄和圖片
-- 🎯 **提示詞設計** - AI 返回結構化 Markdown 格式的設計說明和提示詞
-- 🖼️ **圖片管理** - 本地儲存圖片,支援下載和查看歷史記錄
+- **AI 多模態對話** — 支援文字與圖片輸入，可附加圖片讓 AI 分析
+- **圖片生成** — 透過 ComfyUI API 生成角色圖片，支援完整參數調整
+- **Session 管理** — 多對話 Session，完整保存聊天記錄與生成圖片
+- **思考過程顯示** — AI 的 `<thought>` 推理過程可折疊查看
+- **Markdown 渲染** — AI 回覆支援完整 Markdown 格式
+
+## 系統架構
+
+```
+FastAPI 後端 (port 8000)
+└── 服務 Vue 3 SPA (frontend/dist/)
+└── REST API (/api/...)
+
+Vue 3 前端 (Vite 開發伺服器 port 3000，代理 /api → 8000)
+├── /chat  — 對話頁面（支援圖片拖曳）
+└── /draw  — 圖片生成頁面
+```
 
 ## 系統需求
 
 - Python 3.10+
-- ComfyUI (已運行在 127.0.0.1:8188)
-- GitHub Models API Token
+- Node.js 18+（僅開發/建置時需要）
+- ComfyUI 運行於 `http://127.0.0.1:8188`
+- GitHub Models API Token **或** Google AI API Key
 
 ## 快速開始
 
-### 1. 安裝依賴
+### 1. 安裝 Python 依賴
 
 ```bash
-# 創建虛擬環境(可選)
 python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# 或
-.venv\Scripts\activate  # Windows
 
-# 安裝依賴
+# Windows
+.venv\Scripts\activate
+
+# Linux / macOS
+source .venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### 2. 配置環境變數
+### 2. 設定環境變數
 
 ```bash
-# 複製環境變數範例
-cp .env.example .env
+# Windows
+copy .env.example .env
 
-# 編輯 .env 檔案,填入你的 GitHub API Token
-nano .env
+# Linux / macOS
+cp .env.example .env
 ```
 
-必須配置:
-- `GITHUB_API_TOKEN` - 你的 GitHub Models API Token
+開啟 `.env`，至少填入以下必要項目：
 
-### 3. 確保 ComfyUI 運行
+```ini
+# 選擇 AI 供應商："github" 或 "google"
+AI_PROVIDER=github
 
-確保 ComfyUI 已經在 `http://127.0.0.1:8188` 運行,並且已載入所需模型。
+# GitHub Models
+GITHUB_API_TOKEN=your_github_token_here
 
-### 4. 啟動應用
+# 或 Google AI
+# GOOGLE_API_KEY=your_google_api_key_here
+```
+
+### 3. 確認 ComfyUI 已啟動
+
+確保 ComfyUI 運行於 `http://127.0.0.1:8188`，並已載入所需模型。
+
+---
+
+## 啟動方式
+
+### 方式一：生產模式（推薦）
+
+先建置前端，再啟動後端。Frontend 由 FastAPI 直接服務。
 
 ```bash
-# 開發模式(帶自動重載)
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# 1. 建置前端（首次或修改前端後執行）
+cd frontend
+npm install
+npm run build
+cd ..
 
-# 或直接運行
+# 2. 啟動後端
 python app/main.py
 ```
 
-### 5. 訪問應用
+訪問：`http://localhost:8000`
 
-打開瀏覽器訪問: http://localhost:8000
+---
 
-## 使用方法
+### 方式二：開發模式（前後端分離熱重載）
 
-### 基本流程
+後端和前端分別啟動，支援雙向熱重載。
 
-1. **創建對話** - 點擊「+」創建新對話 Session
-2. **與 AI 對話** - 描述你想設計的角色,AI 會提供專業建議和提示詞
-3. **複製提示詞** - 從 AI 回應中複製提示詞
-4. **切換到生圖面板** - 點擊「圖片生成」Tab
-5. **貼上提示詞** - 貼上複製的提示詞,調整參數
-6. **生成圖片** - 點擊「生成圖片」按鈕
-7. **下載圖片** - 圖片生成後可直接下載
+**終端 1 — 啟動後端**
+```bash
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-### Session 管理
+**終端 2 — 啟動前端開發伺服器**
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-- **創建**: 點擊左側邊欄的「+」按鈕
-- **切換**: 點擊 Session 列表中的項目
-- **編輯標題**: 點擊頂部的「編輯標題」按鈕
-- **刪除**: 點擊「刪除」按鈕(會刪除所有訊息和圖片)
+訪問：`http://localhost:3000`（Vite 自動代理 `/api` → `http://localhost:8000`）
 
-## API 端點
+---
 
-### Session API
-- `POST /api/sessions` - 創建 Session
-- `GET /api/sessions` - 獲取所有 Session
-- `GET /api/sessions/{session_id}` - 獲取 Session 詳情
-- `PUT /api/sessions/{session_id}/title` - 更新標題
-- `DELETE /api/sessions/{session_id}` - 刪除 Session
+## 使用說明
 
-### Chat API
-- `POST /api/chat/send` - 發送訊息
-- `GET /api/chat/history/{session_id}` - 獲取聊天歷史
-
-### Image API
-- `POST /api/image/generate` - 生成圖片
-- `GET /api/image/view/{session_id}/{filename}` - 查看圖片
-- `GET /api/image/download/{session_id}/{filename}` - 下載圖片
-- `GET /api/image/list/{session_id}` - 獲取圖片列表
+1. **建立 Session** — 點擊左側邊欄的「+」新增對話
+2. **AI 對話** (`/chat`) — 輸入訊息，可拖曳或附加圖片讓 AI 分析
+3. **圖片生成** (`/draw`) — 填入提示詞，調整寬高/Steps/CFG/Sampler，點擊「生成圖片」
+4. **查看歷史** — 點擊已生成圖片可全螢幕預覽，支援下載
 
 ## 專案結構
 
 ```
-app/
-├── domain/              # 領域層 (實體和業務規則)
-│   ├── models/          # 資料模型
-│   └── exceptions.py    # 自訂異常
-├── application/         # 應用層 (業務邏輯)
-│   ├── services/        # 服務層
-│   └── dtos/            # 資料傳輸物件
-├── infrastructure/      # 基礎設施層 (外部服務)
-│   ├── adapters/        # API 適配器
-│   └── repositories/    # 資料儲存
-└── presentation/        # 表現層 (API 和 UI)
-    ├── routes/          # API 路由
-    ├── templates/       # HTML 模板
-    └── static/          # 靜態資源
+comfyuiAPi/
+├── app/                        # Python 後端 (Clean Architecture)
+│   ├── main.py                 # FastAPI 入口，服務 Vue SPA + API
+│   ├── config.py               # Pydantic 設定
+│   ├── application/
+│   │   ├── services/           # 業務邏輯
+│   │   └── dtos/               # 資料傳輸物件
+│   ├── domain/
+│   │   ├── models/             # 領域模型
+│   │   └── exceptions.py
+│   ├── infrastructure/
+│   │   ├── adapters/           # AI 適配器（GitHub / Google / ComfyUI）
+│   │   └── repositories/       # 資料儲存
+│   └── presentation/
+│       └── routes/             # API 路由
+│
+├── frontend/                   # Vue 3 + Vite 前端
+│   ├── src/
+│   │   ├── views/              # ChatView.vue, DrawView.vue
+│   │   ├── components/         # SessionSidebar.vue, MessageBubble.vue
+│   │   ├── stores/             # sessionStore.js（共享狀態）
+│   │   ├── router/             # vue-router
+│   │   └── utils/              # thoughtFilter.js
+│   └── dist/                   # 建置輸出（gitignored，執行前需 npm run build）
+│
+├── workflow/                   # ComfyUI Workflow JSON
+│   ├── qwen image.json         # 輕量模型（Steps=12, CFG=1.0）
+│   └── Anima.json              # 動漫模型（Steps=35, CFG=4.0）
+│
+├── sessions/                   # Session 資料（gitignored）
+├── logs/                       # 日誌（gitignored）
+├── outputs/                    # 舊版輸出目錄（gitignored）
+├── .env.example                # 環境變數範本
+└── requirements.txt
 ```
 
-## 配置說明
+## API 端點
 
-主要配置項(`.env`):
+### Session
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `POST` | `/api/sessions` | 建立 Session |
+| `GET` | `/api/sessions` | 列出所有 Session |
+| `GET` | `/api/sessions/{id}` | 取得 Session 詳情 |
+| `PUT` | `/api/sessions/{id}/title` | 更新標題 |
+| `DELETE` | `/api/sessions/{id}` | 刪除 Session |
 
-```bash
-# GitHub Models API
-GITHUB_API_TOKEN=your_token_here
-GITHUB_MODEL=gpt-4o
+### Chat
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `POST` | `/api/chat/send` | 發送訊息（支援 `image_base64` + `image_mime_type`）|
+| `GET` | `/api/chat/history/{session_id}` | 取得聊天記錄 |
 
-# ComfyUI API
-COMFYUI_API_URL=http://127.0.0.1:8188
-COMFYUI_WORKFLOW_PATH=./workflow/qwen image.json
+### Image
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `POST` | `/api/image/generate` | 呼叫 ComfyUI 生成圖片 |
+| `GET` | `/api/image/view/{session_id}/{filename}` | 顯示圖片 |
+| `GET` | `/api/image/download/{session_id}/{filename}` | 下載圖片 |
+| `GET` | `/api/image/list/{session_id}` | 列出 Session 圖片 |
 
-# 應用配置
-APP_HOST=0.0.0.0
-APP_PORT=8000
-SESSION_STORAGE_PATH=./sessions
-LOG_LEVEL=INFO
+## 環境變數說明
 
-# 預設圖片參數
-DEFAULT_IMAGE_WIDTH=608
-DEFAULT_IMAGE_HEIGHT=1328
-DEFAULT_STEPS=12
-DEFAULT_CFG=1.0
-```
+完整範本見 `.env.example`。常用項目：
 
-## 🎨 UI/UX 和模組化系統
-
-本專案採用現代的模組化設計架構,分離 AI 對話和圖片生成功能。
-
-### 模組化組件
-
-- **ChatModule** - 完全獨立的聊天模組
-  - 消息管理和渲染
-  - 事件系統
-  - LocalStorage 持久化
-  
-- **ImageModule** - 完全獨立的圖片生成模組
-  - 表單管理和驗證
-  - 狀態持久化
-  - 結果顯示
-
-### 文檔資源
-
-- 📖 [MODULAR_DESIGN.md](MODULAR_DESIGN.md) - 完整的模組化設計文檔
-- 🔌 [INTEGRATION_GUIDE.md](INTEGRATION_GUIDE.md) - 集成指南和 API 參考
-- 📋 [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - 快速參考和程式碼片段
-- 💡 [INTEGRATION_EXAMPLE.js](INTEGRATION_EXAMPLE.js) - 完整集成示例
-- 📊 [MODULAR_SYSTEM_SUMMARY.md](MODULAR_SYSTEM_SUMMARY.md) - 系統完整總結
-
-### UI 優化特點
-
-- ✅ 無滾動佈局 - 所有內容一屏可見
-- ✅ 響應式設計 - 支援桌面、平板、手機
-- ✅ CSS 變數系統 - 輕鬆自訂主題
-- ✅ 事件驅動架構 - 鬆散耦合的組件通信
-- ✅ 性能優化 - CSS 精簡 25-33%
-
-### 快速開始模組化
-
-```javascript
-// 初始化
-const chat = new ChatModule({
-    container: '#chat-panel'
-});
-
-const image = new ImageModule({
-    container: '#image-panel'
-});
-
-// 監聽事件
-document.addEventListener('messageSent', async (e) => {
-    // 發送到後端...
-});
-
-document.addEventListener('generateImage', async (e) => {
-    // 生成圖片...
-});
-```
-
-## 開發指南
-
-詳細的開發指引請參考: [github/copilot-instructions.md](github/copilot-instructions.md)
-
-### 開發原則
-
-- 遵循乾淨架構 (Clean Architecture)
-- 使用 Type Hints
-- 錯誤處理和日誌記錄
-- 禁止在日誌中使用 emoji
-
-### 測試
-
-```bash
-# 運行單元測試
-pytest tests/unit/
-
-# 運行整合測試
-pytest tests/integration/
-
-# 檢查程式碼風格
-flake8 app/
-black app/
-```
+| 變數 | 說明 | 預設值 |
+|------|------|--------|
+| `AI_PROVIDER` | `github` 或 `google` | `github` |
+| `GITHUB_API_TOKEN` | GitHub Models API Token | — |
+| `GOOGLE_API_KEY` | Google AI API Key | — |
+| `PROMPT_TEMPLATE` | `qwen` 或 `anima` | `qwen` |
+| `COMFYUI_API_URL` | ComfyUI 地址 | `http://127.0.0.1:8188` |
+| `APP_PORT` | 後端監聽 Port | `8000` |
+| `FRONTEND_DIR` | Vue dist 目錄 | `./frontend/dist` |
 
 ## 故障排除
 
-### ComfyUI 連線失敗
-- 確認 ComfyUI 正在運行: http://127.0.0.1:8188
-- 檢查防火牆設定
-- 確認 workflow 檔案路徑正確
+**ComfyUI 無法連線**
+- 確認 ComfyUI 正在運行：`http://127.0.0.1:8188`
+- 檢查 `COMFYUI_API_URL` 設定
 
-### GitHub Models API 錯誤
-- 檢查 API Token 是否有效
-- 確認網路連線正常
-- 檢查 API 配額是否用盡
+**AI API 錯誤**
+- 確認 API Token 有效且有配額
+- 檢查 `AI_PROVIDER` 與對應的 Token 變數是否匹配
 
-### 圖片生成失敗
-- 檢查 ComfyUI 模型是否已載入
-- 確認 workflow 節點配置正確
-- 查看 logs/app.log 獲取詳細錯誤資訊
+**前端顯示空白**
+- 確認已執行 `npm run build`（生產模式）
+- 或確認 Vite dev server 已啟動（開發模式）
+
+**查看詳細錯誤**
+```bash
+cat logs/app.log
+```
 
 ## 授權
 
 MIT License
-
-## 作者
-
-RushiaMode Team
-
-## 版本
-
-1.0.0
