@@ -69,7 +69,7 @@
             v-model="inputText"
             @keydown="handleKeydown"
             @input="autoResize"
-            placeholder="輸入訊息... (Ctrl+Enter 發送，可拖曳圖片)"
+            placeholder="輸入訊息... (Enter 發送，Shift+Enter 換行，可拖曳圖片)"
             rows="1"
             :disabled="isLoading"
           ></textarea>
@@ -78,7 +78,7 @@
             class="btn-send"
             @click="sendMessage"
             :disabled="(!inputText.trim() && !imageFile) || isLoading"
-            title="發送 (Ctrl+Enter)"
+            title="發送 (Enter)"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="22" y1="2" x2="11" y2="13"/>
@@ -138,7 +138,7 @@ const autoResize = () => {
 }
 
 const handleKeydown = (e) => {
-  if (e.ctrlKey && e.key === 'Enter') {
+  if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     sendMessage()
   }
@@ -287,7 +287,7 @@ const sendMessage = async () => {
   display: flex;
   gap: 12px;
   padding: 12px 24px;
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }

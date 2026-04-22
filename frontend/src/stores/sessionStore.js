@@ -5,6 +5,7 @@ const currentSessionId = ref(null)
 const currentSession = ref(null)
 const sessions = ref([])
 const loading = ref(false)
+const pendingPrompt = ref(null)
 
 export function useSessionStore() {
   const fetchSessions = async () => {
@@ -63,6 +64,7 @@ export function useSessionStore() {
     currentSession,
     sessions,
     loading,
+    pendingPrompt,
     fetchSessions,
     createSession,
     deleteSession,

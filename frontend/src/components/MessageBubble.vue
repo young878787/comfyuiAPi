@@ -26,6 +26,7 @@
       <!-- Message content -->
       <div
         :class="['bubble', message.role]"
+        @click="handleBubbleClick"
       >
         <div v-if="message.role === 'assistant'" class="markdown-body" v-html="renderedContent"></div>
         <div v-else class="plain-text">{{ message.content }}</div>
@@ -42,6 +43,11 @@ import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { filterThoughts } from '@/utils/thoughtFilter'
+import { useRouter } from 'vue-router'
+import { useSessionStore } from '@/stores/sessionStore'
+
+const router = useRouter()
+const { pendingPrompt } = useSessionStore()
 
 const props = defineProps({
   message: {
@@ -51,7 +57,37 @@ const props = defineProps({
 })
 
 // Configure marked (v12+ API)
-marked.use({ breaks: true, gfm: true })
+const renderer = {
+  code(token) {
+    const text = token.text || ''
+    const lang = token.lang || ''
+    const encodedText = encodeURIComponent(text)
+    
+    // Add custom wrapper and buttons for all code blocks
+    return `
+      <div class="code-block-wrapper">
+        <div class="code-actions">
+          <button class="btn-code-action btn-copy" data-code="${encodedText}" title="一鍵複製">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg> 一鍵複製
+          </button>
+          <button class="btn-code-action btn-draw" data-code="${encodedText}" title="一鍵繪圖">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg> 一鍵繪圖
+          </button>
+        </div>
+        <pre><code class="language-${lang}">${DOMPurify.sanitize(text)}</code></pre>
+      </div>
+    `
+  }
+}
+marked.use({ breaks: true, gfm: true, renderer })
+
 
 const thoughts = computed(() => {
   if (props.message.role !== 'assistant') return []
@@ -62,13 +98,31 @@ const thoughts = computed(() => {
 const renderedContent = computed(() => {
   if (props.message.role !== 'assistant') return props.message.content
   const { filtered } = filterThoughts(props.message.content)
-  return DOMPurify.sanitize(marked.parse(filtered))
+  return DOMPurify.sanitize(marked.parse(filtered), { ADD_ATTR: ['data-code'] })
 })
 
 const formatTime = (ts) => {
   if (!ts) return ''
   const d = new Date(ts)
   return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
+}
+
+const handleBubbleClick = (e) => {
+  const copyBtn = e.target.closest('.btn-copy')
+  const drawBtn = e.target.closest('.btn-draw')
+  
+  if (copyBtn) {
+    const code = decodeURIComponent(copyBtn.getAttribute('data-code'))
+    navigator.clipboard.writeText(code).then(() => {
+      const originalHtml = copyBtn.innerHTML
+      copyBtn.innerHTML = '✅ 已複製'
+      setTimeout(() => { copyBtn.innerHTML = originalHtml }, 2000)
+    })
+  } else if (drawBtn) {
+    const code = decodeURIComponent(drawBtn.getAttribute('data-code'))
+    pendingPrompt.value = { text: code, autoSubmit: true }
+    router.push('/draw')
+  }
 }
 </script>
 
@@ -77,7 +131,7 @@ const formatTime = (ts) => {
   display: flex;
   gap: 12px;
   padding: 12px 24px;
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 100%;
 }
@@ -187,5 +241,53 @@ const formatTime = (ts) => {
   border-top: 1px solid #e4d9f7;
   white-space: pre-wrap;
   line-height: 1.5;
+}
+
+/* Code block wrapper and actions */
+:deep(.code-block-wrapper) {
+  position: relative;
+  margin: 1em 0;
+  border-radius: var(--radius-md);
+  background: #1e1e1e;
+  overflow: hidden;
+}
+
+:deep(.code-actions) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+:deep(.btn-code-action) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+:deep(.btn-code-action:hover) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+:deep(.code-block-wrapper pre) {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  color: #d4d4d4;
+}
+
+:deep(.code-block-wrapper code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.85rem;
 }
 </style>

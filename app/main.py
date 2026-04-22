@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.presentation.routes import session_routes, chat_routes, image_routes
+from app.presentation.routes import session_routes, chat_routes, image_routes, config_routes
 
 # Ensure log directory exists
 log_file_path = Path(settings.log_file)
@@ -50,6 +50,7 @@ app.add_middleware(
 app.include_router(session_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(image_routes.router)
+app.include_router(config_routes.router)
 
 
 @app.get("/health")

@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Google AI Studio API
     google_api_key: str = ""
     google_api_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
-    google_model: str = "gemma-4-27b-it"
+    google_model: str = "gemma-4-31b-it"
 
     # Prompt Template: qwen | anima
     prompt_template: str = "qwen"

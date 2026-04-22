@@ -108,10 +108,24 @@
         <!-- Right: Results -->
         <div class="result-panel">
           <div class="panel-header">
-            <h3>生成結果</h3>
-            <span v-if="generatedImages.length" class="image-count">
-              {{ generatedImages.length }} 張圖片
-            </span>
+            <div class="header-left">
+              <h3>生成結果</h3>
+              <span v-if="generatedImages.length" class="image-count">
+                {{ generatedImages.length }} 張圖片
+              </span>
+            </div>
+            <a
+              v-if="latestImage"
+              :href="`/api/image/download/${currentSessionId}/${latestImage}`"
+              class="btn-download-top"
+              download
+              title="下載圖片"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              下載圖片
+            </a>
           </div>
           <div class="panel-body result-body">
             <!-- Latest result -->
@@ -122,19 +136,6 @@
                 class="result-image"
                 @click="openFullscreen(latestImage)"
               />
-              <div class="result-actions">
-                <a
-                  :href="`/api/image/download/${currentSessionId}/${latestImage}`"
-                  class="btn-action"
-                  download
-                  title="下載"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-                  </svg>
-                  下載
-                </a>
-              </div>
             </div>
 
             <!-- Gallery -->
@@ -190,11 +191,11 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import axios from 'axios'
 import { useSessionStore } from '@/stores/sessionStore'
 
-const { currentSessionId } = useSessionStore()
+const { currentSessionId, pendingPrompt } = useSessionStore()
 
 const form = ref({
   positive_prompt: '',
@@ -213,6 +214,25 @@ const latestImage = ref(null)
 const generatedImages = ref([])
 const errorMsg = ref('')
 const fullscreenImage = ref(null)
+const backendConfig = ref(null)
+
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/config')
+    backendConfig.value = res.data
+    form.value.steps = res.data.default_steps
+    form.value.cfg = res.data.default_cfg
+    form.value.sampler = res.data.default_sampler
+    form.value.scheduler = res.data.default_scheduler
+    form.value.width = res.data.default_width
+    form.value.height = res.data.default_height
+    if (res.data.default_negative_prompt) {
+      form.value.negative_prompt = res.data.default_negative_prompt
+    }
+  } catch (err) {
+    console.error('Failed to fetch backend config:', err)
+  }
+})
 
 // Load existing images when session changes
 watch(currentSessionId, async (newId) => {
@@ -226,6 +246,18 @@ watch(currentSessionId, async (newId) => {
     latestImage.value = res.data.latest_image || null
   } catch (e) {
     // Session might not have images yet, that's ok
+  }
+}, { immediate: true })
+
+watch(pendingPrompt, (newVal) => {
+  if (newVal && newVal.text) {
+    form.value.positive_prompt = newVal.text
+    if (newVal.autoSubmit) {
+      setTimeout(() => {
+        generateImage()
+      }, 300)
+    }
+    pendingPrompt.value = null
   }
 }, { immediate: true })
 
@@ -323,10 +355,16 @@ const openFullscreen = (img) => {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
-.panel-header h3 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-left h3 {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-dark);
+  margin: 0;
 }
 .image-count {
   font-size: 0.8rem;
@@ -334,6 +372,24 @@ const openFullscreen = (img) => {
   background: var(--bg-content);
   padding: 2px 10px;
   border-radius: 20px;
+}
+.btn-download-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-download-top:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }
 
 .panel-body {
@@ -432,28 +488,7 @@ const openFullscreen = (img) => {
   transform: scale(1.01);
 }
 
-.result-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 12px;
-}
-.btn-action {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--bg-content);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-.btn-action:hover {
-  background: var(--accent-light);
-  color: var(--accent);
-}
+
 
 .result-empty {
   text-align: center;
