@@ -6,19 +6,6 @@ class DomainException(Exception):
     pass
 
 
-class SessionNotFoundError(DomainException):
-    """Raised when a session cannot be found."""
-    pass
-
-
-class SessionCreateError(DomainException):
-    """Raised when session creation fails."""
-    pass
-
-
-class MessageNotFoundError(DomainException):
-    """Raised when a message cannot be found."""
-    pass
 
 
 class ImageGenerationError(DomainException):

@@ -11,6 +11,7 @@ from datetime import datetime
 
 from app.config import settings
 from app.domain.exceptions import ImageGenerationError, APIError
+from app.infrastructure.retry_utils import retry_sync
 
 logger = logging.getLogger(__name__)
 
@@ -329,16 +330,18 @@ class ComfyUIAdapter:
         prompt = {"prompt": api_format}
         data = json.dumps(prompt).encode("utf-8")
 
-        req = urllib.request.Request(
-            f"http://{self.server_address}/prompt",
-            data=data,
-            headers={"Content-Type": "application/json"},
-        )
-
-        try:
+        def _do_queue():
+            req = urllib.request.Request(
+                f"http://{self.server_address}/prompt",
+                data=data,
+                headers={"Content-Type": "application/json"},
+            )
             response = urllib.request.urlopen(req)
             result = json.loads(response.read())
-            prompt_id = result["prompt_id"]
+            return result["prompt_id"]
+
+        try:
+            prompt_id = retry_sync(_do_queue, max_retries=3, delay=1.0, backoff=2.0)
 
             logger.info(
                 "Prompt queued successfully", extra={"prompt_id": prompt_id}
@@ -424,11 +427,14 @@ class ComfyUIAdapter:
         data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
         url_values = urllib.parse.urlencode(data)
 
-        try:
+        def _do_download():
             with urllib.request.urlopen(
                 f"http://{self.server_address}/view?{url_values}"
             ) as resp:
-                image_data = resp.read()
+                return resp.read()
+
+        try:
+            image_data = retry_sync(_do_download, max_retries=3, delay=1.0, backoff=2.0)
 
             logger.info(
                 "Image downloaded successfully",

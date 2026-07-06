@@ -1,24 +1,21 @@
 """Image generation and management routes."""
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.responses import FileResponse, StreamingResponse
-from typing import List
+from fastapi.responses import StreamingResponse
+from typing import List, Optional
 import io
 import base64
 import logging
 
 from app.application.dtos.common import (
-    ImageGenerateRequest,
     ImageResponse,
     ImageListResponse
 )
 from app.application.services.image_service import ImageService
-from app.application.services.session_service import SessionService
 from app.infrastructure.repositories.image_repository import ImageRepository
-from app.infrastructure.repositories.session_repository import SessionRepository
 from app.infrastructure.adapters.comfyui_adapter import ComfyUIAdapter
 from app.infrastructure.adapters.ai_adapter_factory import create_ai_adapter
-from app.domain.exceptions import SessionNotFoundError, ImageNotFoundError, ImageGenerationError
+from app.domain.exceptions import ImageNotFoundError
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,9 +27,7 @@ def get_image_service() -> ImageService:
     """Dependency to get image service."""
     image_repository = ImageRepository()
     comfyui_adapter = ComfyUIAdapter()
-    session_repository = SessionRepository()
-    session_service = SessionService(session_repository)
-    return ImageService(image_repository, comfyui_adapter, session_service)
+    return ImageService(image_repository, comfyui_adapter)
 
 
 @router.post("/analyze")
@@ -64,78 +59,35 @@ async def analyze_image(file: UploadFile = File(...)):
         logger.exception(f"Error analyzing image: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/generate", response_model=ImageResponse)
-async def generate_image(
-    request: ImageGenerateRequest,
-    service: ImageService = Depends(get_image_service)
-):
-    """Generate an image using ComfyUI."""
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    try:
-        filename, metadata = await service.generate_image(
-            session_id=request.session_id,
-            positive_prompt=request.positive_prompt,
-            negative_prompt=request.negative_prompt,
-            width=request.width,
-            height=request.height,
-            steps=request.steps,
-            cfg=request.cfg,
-            seed=request.seed,
-            sampler=request.sampler,
-            scheduler=request.scheduler
-        )
-        
-        # 更新 metadata 的 filename
-        metadata.filename = filename
-        
-        response = ImageResponse(
-            filename=filename,
-            url=f"/api/image/view/{request.session_id}/{filename}",
-            metadata=metadata.to_dict()
-        )
-        
-        logger.info(f"Returning response: {response}")
-        return response
-        
-    except SessionNotFoundError as e:
-        logger.error(f"Session not found: {e}")
-        raise HTTPException(status_code=404, detail=str(e))
-    except ImageGenerationError as e:
-        logger.error(f"Image generation error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        logger.exception(f"Unexpected error in image generation: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
-
-@router.get("/view/{session_id}/{filename}")
+@router.get("/view/{date_str}/{filename}")
 async def view_image(
-    session_id: str,
+    date_str: str,
     filename: str,
     service: ImageService = Depends(get_image_service)
 ):
     """View an image."""
     try:
-        image_data = await service.get_image(session_id, filename)
+        image_data = await service.get_image(date_str, filename)
         return StreamingResponse(
             io.BytesIO(image_data),
             media_type="image/png"
         )
     except ImageNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/download/{session_id}/{filename}")
+@router.get("/download/{date_str}/{filename}")
 async def download_image(
-    session_id: str,
+    date_str: str,
     filename: str,
     service: ImageService = Depends(get_image_service)
 ):
     """Download an image."""
     try:
-        image_data = await service.get_image(session_id, filename)
+        image_data = await service.get_image(date_str, filename)
         return StreamingResponse(
             io.BytesIO(image_data),
             media_type="image/png",
@@ -145,22 +97,46 @@ async def download_image(
         )
     except ImageNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/list/{session_id}", response_model=ImageListResponse)
+@router.get("/list/{date_str}", response_model=ImageListResponse)
 async def list_images(
-    session_id: str,
+    date_str: str,
     service: ImageService = Depends(get_image_service)
 ):
-    """List all images for a session."""
+    """List all images for a specific date."""
     try:
-        images = await service.list_images(session_id)
-        latest = await service.get_latest_image(session_id)
+        images = await service.list_images(date_str)
+        latest = await service.get_latest_image(date_str)
         
         return ImageListResponse(
-            session_id=session_id,
+            date=date_str,
             images=images,
             latest_image=latest
         )
-    except SessionNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/metadata/{date_str}/{filename}", response_model=ImageResponse)
+async def get_image_metadata(
+    date_str: str,
+    filename: str,
+    service: ImageService = Depends(get_image_service)
+):
+    """Retrieve metadata of a specific image."""
+    try:
+        metadata = await service.get_image_metadata(date_str, filename)
+        if not metadata:
+            raise HTTPException(status_code=404, detail="Metadata not found")
+        return ImageResponse(
+            filename=filename,
+            url=f"/api/image/view/{date_str}/{filename}",
+            metadata=metadata.to_dict()
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

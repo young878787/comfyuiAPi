@@ -8,7 +8,7 @@ from datetime import datetime
 
 from app.config import settings
 from app.domain.models import ImageMetadata
-from app.domain.exceptions import SessionNotFoundError, ImageNotFoundError
+from app.domain.exceptions import ImageNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -18,20 +18,22 @@ class ImageRepository:
     
     def __init__(self):
         """Initialize repository with storage path."""
-        self.storage_path = settings.sessions_path
+        # Config may not be fully refactored yet, so fall back to default outputs path
+        try:
+            self.storage_path = Path(settings.outputs_dir)
+        except AttributeError:
+            self.storage_path = Path("./outputs")
+            
+    def _get_date_path(self, date_str: str) -> Path:
+        """Get directory path for a specific date."""
+        path = self.storage_path / date_str
+        path.mkdir(parents=True, exist_ok=True)
+        return path
     
-    def _get_images_path(self, session_id: str) -> Path:
-        """Get images directory path for session."""
-        return self.storage_path / session_id / "images"
-    
-    def _get_next_image_number(self, session_id: str) -> int:
-        """Get next available image number."""
-        images_path = self._get_images_path(session_id)
-        
-        if not images_path.exists():
-            return 1
-        
-        existing_images = list(images_path.glob("img_*.png"))
+    def _get_next_image_number(self, date_str: str) -> int:
+        """Get next available image number (sequence)."""
+        date_path = self._get_date_path(date_str)
+        existing_images = list(date_path.glob("[0-9][0-9][0-9].png"))
         
         if not existing_images:
             return 1
@@ -39,79 +41,124 @@ class ImageRepository:
         numbers = []
         for img in existing_images:
             try:
-                # Extract number from img_001.png
-                num_str = img.stem.split('_')[1]
+                # Extract number from 001.png
+                num_str = img.stem
                 numbers.append(int(num_str))
-            except (IndexError, ValueError):
+            except ValueError:
                 continue
         
         return max(numbers) + 1 if numbers else 1
     
+    def save_text_record(self, filepath: Path, metadata: ImageMetadata) -> None:
+        """Generate and save a human-readable text configuration summary."""
+        orig_prompt = metadata.original_prompt.strip() if metadata.original_prompt else "自由發揮"
+        idea = metadata.user_idea.strip() if metadata.user_idea else "直接使用原始提示詞"
+        
+        record_content = f"""================================================================================
+ComfyUI 圖片生成參數記錄
+================================================================================
+
+📁 圖片檔名: {metadata.filename}
+⏰ 生成時間: {metadata.generated_at.strftime('%Y-%m-%d %H:%M:%S')}
+
+👤 用戶原始 Prompt
+--------------------------------------------------------------------------------
+{orig_prompt}
+
+💡 用戶修改想法 (Idea)
+--------------------------------------------------------------------------------
+{idea}
+
+🎨 生成參數
+--------------------------------------------------------------------------------
+📝 最終使用 Prompt:
+{metadata.positive_prompt}
+
+🌱 Seed: {metadata.seed}
+📐 解析度: {metadata.width}x{metadata.height}
+⚙️  Steps: {metadata.steps}
+🎯 Sampler: {metadata.sampler}
+📅 Scheduler: {metadata.scheduler}
+🔧 CFG: {metadata.cfg}
+🖼️  Workflow: {metadata.workflow_name}
+
+🤖 AI 修改資訊
+--------------------------------------------------------------------------------
+模型: {metadata.ai_model if metadata.ai_model else '無'}
+提供商: {metadata.ai_provider if metadata.ai_provider else '無'}
+
+================================================================================
+"""
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(record_content)
+
     async def save_image(
         self,
-        session_id: str,
         image_data: bytes,
-        metadata: ImageMetadata
+        metadata: ImageMetadata,
+        date_str: Optional[str] = None
     ) -> str:
         """
-        Save image and its metadata.
+        Save image, metadata, and text log.
         
         Args:
-            session_id: Session ID
             image_data: Image binary data
             metadata: Image metadata
+            date_str: Folder date key (YYYY-MM-DD), defaults to today
             
         Returns:
-            str: Image filename
-            
-        Raises:
-            SessionNotFoundError: If session not found
+            str: Relative saved path of image from root (e.g., outputs/2026-07-06/001.png)
         """
-        images_path = self._get_images_path(session_id)
-        
-        if not images_path.exists():
-            raise SessionNotFoundError(f"Session not found: {session_id}")
+        if not date_str:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+            
+        date_path = self._get_date_path(date_str)
         
         try:
-            # Generate filename
-            img_number = self._get_next_image_number(session_id)
-            filename = f"img_{img_number:03d}.png"
+            # Generate sequence filename
+            img_number = self._get_next_image_number(date_str)
+            base_name = f"{img_number:03d}"
+            filename = f"{base_name}.png"
             
-            # Save image
-            image_path = images_path / filename
+            # Save image file
+            image_path = date_path / filename
             with open(image_path, 'wb') as f:
                 f.write(image_data)
             
-            # Update metadata filename
+            # Update metadata attributes
             metadata.filename = filename
             metadata.generated_at = datetime.now()
             
-            # Save metadata
-            metadata_path = images_path / f"img_{img_number:03d}_meta.json"
+            # Save structured JSON metadata
+            metadata_path = date_path / f"{base_name}_meta.json"
             with open(metadata_path, 'w', encoding='utf-8') as f:
                 json.dump(metadata.to_dict(), f, ensure_ascii=False, indent=2)
+                
+            # Save human-readable summary record
+            text_path = date_path / f"{base_name}.txt"
+            self.save_text_record(text_path, metadata)
             
-            logger.info("Image saved", extra={
-                "session_id": session_id,
-                "image_file": filename,
-                "image_bytes": len(image_data)
+            logger.info("Image saved successfully", extra={
+                "date": date_str,
+                "filename": filename,
+                "bytes": len(image_data)
             })
             
-            return filename
+            return f"outputs/{date_str}/{filename}"
             
         except Exception as e:
             logger.error("Failed to save image", extra={
-                "session_id": session_id,
+                "date": date_str,
                 "error": str(e)
             }, exc_info=True)
             raise
-    
-    async def get_image(self, session_id: str, filename: str) -> bytes:
+            
+    async def get_image(self, date_str: str, filename: str) -> bytes:
         """
         Get image data.
         
         Args:
-            session_id: Session ID
+            date_str: Date folder name
             filename: Image filename
             
         Returns:
@@ -120,40 +167,39 @@ class ImageRepository:
         Raises:
             ImageNotFoundError: If image not found
         """
-        image_path = self._get_images_path(session_id) / filename
+        image_path = self.storage_path / date_str / filename
         
         if not image_path.exists():
-            raise ImageNotFoundError(f"Image not found: {filename}")
+            raise ImageNotFoundError(f"Image not found: {date_str}/{filename}")
         
         try:
             with open(image_path, 'rb') as f:
                 return f.read()
         except Exception as e:
             logger.error("Failed to read image", extra={
-                "session_id": session_id,
+                "date": date_str,
                 "filename": filename,
                 "error": str(e)
             }, exc_info=True)
             raise
-    
+            
     async def get_image_metadata(
         self,
-        session_id: str,
+        date_str: str,
         filename: str
     ) -> Optional[ImageMetadata]:
         """
         Get image metadata.
         
         Args:
-            session_id: Session ID
+            date_str: Date folder name
             filename: Image filename
             
         Returns:
             ImageMetadata: Image metadata or None if not found
         """
-        # Extract base filename without extension
         base_name = filename.rsplit('.', 1)[0]
-        metadata_path = self._get_images_path(session_id) / f"{base_name}_meta.json"
+        metadata_path = self.storage_path / date_str / f"{base_name}_meta.json"
         
         if not metadata_path.exists():
             return None
@@ -164,87 +210,90 @@ class ImageRepository:
             return ImageMetadata.from_dict(data)
         except Exception as e:
             logger.warning("Failed to read metadata", extra={
-                "session_id": session_id,
+                "date": date_str,
                 "filename": filename,
                 "error": str(e)
             })
             return None
-    
-    async def list_images(self, session_id: str) -> List[str]:
+            
+    async def list_images(self, date_str: str) -> List[str]:
         """
-        List all images for a session.
+        List all image filenames for a specific date.
         
         Args:
-            session_id: Session ID
+            date_str: Date folder name
             
         Returns:
             List[str]: List of image filenames, sorted by name
-            
-        Raises:
-            SessionNotFoundError: If session not found
         """
-        images_path = self._get_images_path(session_id)
+        date_path = self.storage_path / date_str
         
-        if not images_path.exists():
-            raise SessionNotFoundError(f"Session not found: {session_id}")
-        
+        if not date_path.exists():
+            return []
+            
         try:
-            image_files = sorted(images_path.glob("img_*.png"))
+            image_files = sorted(date_path.glob("[0-9][0-9][0-9].png"))
             return [img.name for img in image_files]
         except Exception as e:
             logger.error("Failed to list images", extra={
-                "session_id": session_id,
+                "date": date_str,
                 "error": str(e)
             }, exc_info=True)
             raise
-    
-    async def get_latest_image(self, session_id: str) -> Optional[str]:
+            
+    async def get_latest_image(self, date_str: str) -> Optional[str]:
         """
-        Get the latest image filename.
+        Get the latest image filename for a specific date.
         
         Args:
-            session_id: Session ID
+            date_str: Date folder name
             
         Returns:
             Optional[str]: Latest image filename or None if no images
         """
-        images = await self.list_images(session_id)
+        images = await self.list_images(date_str)
         return images[-1] if images else None
-    
-    async def delete_image(self, session_id: str, filename: str) -> None:
+        
+    async def delete_image(self, date_str: str, filename: str) -> None:
         """
-        Delete image and its metadata.
+        Delete image, metadata, and text logs.
         
         Args:
-            session_id: Session ID
+            date_str: Date folder name
             filename: Image filename
             
         Raises:
             ImageNotFoundError: If image not found
         """
-        image_path = self._get_images_path(session_id) / filename
+        image_path = self.storage_path / date_str / filename
         
         if not image_path.exists():
-            raise ImageNotFoundError(f"Image not found: {filename}")
-        
+            raise ImageNotFoundError(f"Image not found: {date_str}/{filename}")
+            
         try:
-            # Delete image
+            # Delete png image
             image_path.unlink()
             
-            # Delete metadata if exists
             base_name = filename.rsplit('.', 1)[0]
+            
+            # Delete JSON metadata
             metadata_path = image_path.parent / f"{base_name}_meta.json"
             if metadata_path.exists():
                 metadata_path.unlink()
-            
-            logger.info("Image deleted", extra={
-                "session_id": session_id,
+                
+            # Delete text log summary
+            text_path = image_path.parent / f"{base_name}.txt"
+            if text_path.exists():
+                text_path.unlink()
+                
+            logger.info("Image files deleted successfully", extra={
+                "date": date_str,
                 "filename": filename
             })
             
         except Exception as e:
-            logger.error("Failed to delete image", extra={
-                "session_id": session_id,
+            logger.error("Failed to delete image files", extra={
+                "date": date_str,
                 "filename": filename,
                 "error": str(e)
             }, exc_info=True)

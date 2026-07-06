@@ -13,11 +13,11 @@
 ## 系統架構
 
 ```
-FastAPI 後端 (port 8000)
+FastAPI 後端 (port 由 BACKEND_PORT/APP_PORT 控制，預設 8000)
 └── 服務 Vue 3 SPA (frontend/dist/)
 └── REST API (/api/...)
 
-Vue 3 前端 (Vite 開發伺服器 port 3000，代理 /api → 8000)
+Vue 3 前端 (Vite 開發伺服器 port 3000，代理 /api → 後端埠號)
 ├── /chat  — 對話頁面（支援圖片拖曳）
 └── /draw  — 圖片生成頁面
 ```
@@ -61,6 +61,9 @@ cp .env.example .env
 # 選擇 AI 供應商："github" 或 "google"
 AI_PROVIDER=github
 
+# 後端啟動埠號（你可改成 8002、8010... 避免衝突）
+BACKEND_PORT=8000
+
 # GitHub Models
 GITHUB_API_TOKEN=your_github_token_here
 
@@ -88,10 +91,10 @@ npm run build
 cd ..
 
 # 2. 啟動後端
-python app/main.py
+python -m app.server
 ```
 
-訪問：`http://localhost:8000`
+訪問：`http://localhost:<BACKEND_PORT>`
 
 ---
 
@@ -101,7 +104,7 @@ python app/main.py
 
 **終端 1 — 啟動後端**
 ```bash
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m app.server --reload
 ```
 
 **終端 2 — 啟動前端開發伺服器**
@@ -111,7 +114,9 @@ npm install
 npm run dev
 ```
 
-訪問：`http://localhost:3000`（Vite 自動代理 `/api` → `http://localhost:8000`）
+訪問：`http://localhost:3000`（Vite 代理 `/api` 到後端）
+
+> Vite 開發代理會自動讀取專案根目錄 `.env` 的 `BACKEND_PORT`（若未設定則使用 `APP_PORT`）。
 
 ---
 
@@ -129,6 +134,7 @@ comfyuiAPi/
 ├── app/                        # Python 後端 (Clean Architecture)
 │   ├── main.py                 # FastAPI 入口，服務 Vue SPA + API
 │   ├── config.py               # Pydantic 設定
+│   ├── server.py               # 後端啟動入口（讀取 .env host/port）
 │   ├── application/
 │   │   ├── services/           # 業務邏輯
 │   │   └── dtos/               # 資料傳輸物件
@@ -197,7 +203,8 @@ comfyuiAPi/
 | `GOOGLE_API_KEY` | Google AI API Key | — |
 | `PROMPT_TEMPLATE` | `qwen` 或 `anima` | `qwen` |
 | `COMFYUI_API_URL` | ComfyUI 地址 | `http://127.0.0.1:8188` |
-| `APP_PORT` | 後端監聽 Port | `8000` |
+| `BACKEND_PORT` | 後端啟動 Port（優先使用） | `8000` |
+| `APP_PORT` | 後端監聽 Port（相容舊設定） | `8000` |
 | `FRONTEND_DIR` | Vue dist 目錄 | `./frontend/dist` |
 
 ## 故障排除

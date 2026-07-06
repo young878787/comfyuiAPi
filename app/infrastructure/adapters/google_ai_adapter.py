@@ -7,6 +7,7 @@ from typing import List, Dict, Any
 from app.config import settings
 from app.domain.exceptions import APIError
 from app.infrastructure.adapters.base_ai_adapter import BaseAIAdapter
+from app.infrastructure.retry_utils import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -58,27 +59,29 @@ class GoogleAIAdapter(BaseAIAdapter):
             "max_tokens": max_tokens,
         }
 
-        try:
+        async def _do_generate():
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                logger.info(
-                    "Calling Google AI Studio API",
-                    extra={"model": self.model, "message_count": len(messages)},
-                )
-
                 response = await client.post(
                     self.api_url, headers=headers, json=payload
                 )
                 response.raise_for_status()
                 data = response.json()
+                return data["choices"][0]["message"]["content"]
 
-                content = data["choices"][0]["message"]["content"]
+        try:
+            logger.info(
+                "Calling Google AI Studio API",
+                extra={"model": self.model, "message_count": len(messages)},
+            )
 
-                logger.info(
-                    "Google AI Studio API call successful",
-                    extra={"response_length": len(content)},
-                )
+            content = await retry_async(_do_generate, max_retries=3, delay=1.0, backoff=2.0)
 
-                return content
+            logger.info(
+                "Google AI Studio API call successful",
+                extra={"response_length": len(content)},
+            )
+
+            return content
 
         except httpx.HTTPStatusError as e:
             logger.error(

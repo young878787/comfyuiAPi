@@ -12,12 +12,12 @@
     },
     "class_type": "VAEDecode",
     "_meta": {
-      "title": "VAE解码"
+      "title": "VAE 解碼"
     }
   },
   "11": {
     "inputs": {
-      "text": "newest, masterpiece, best quality, year 2025,\n@firedotinc, \n1girl, shirakami fubuki, i love canada \\(meme\\), solo, long_hair, single braid, looking_at_viewer, blush, smile, shirt, simple_background, long_sleeves, white hair, white_background, green eyes, closed_mouth, jacket, standing, white_shirt, collarbone, heart, cowboy_shot, pantyhose, thigh gap, shorts, black_jacket, partially unzipped, v-shaped_eyebrows, short_shorts, swept_bangs, denim, t-shirt, clothes_writing, denim_shorts, brown_pantyhose, hands_in_pockets, print_shirt, leather, >:), pantyhose_under_shorts, cutoffs, leather_jacket, ahoge, fox ears, fox tail, \"I â¤ï¸ Y\" written on her shirt, D letter slightly covered by jacket, \n<lora:firedotinc_anima_kohya_low-lr_few_blocks_v4:1>",
+      "text": "masterpiece, best quality, score_7, newest, safe, 1girl, solo, march 7th, honkai: star rail, preservation outfit, pink hair, medium hair, hair ornament, multicolored eyes, white collared shirt, blue skirt, blush, smile, one eye closed, sitting, looking at viewer.\n\nA cheerful anime illustration of March 7th from Honkai: Star Rail in her preservation form. She is sitting and facing the viewer with a playful wink, smiling with a slight blush on her face. Her pink hair and distinctive multicolored eyes are clearly visible, and she wears a white collared shirt with a blue skirt. The composition feels lively and dynamic.",
       "clip": [
         "45",
         0
@@ -30,7 +30,7 @@
   },
   "12": {
     "inputs": {
-      "text": "worst quality, low quality, score_1, score_2, score_3, artist name, \nlowres, bad anatomy, bad hands, bad fingers, extra fingers, missing fingers, deformed hands, mutated hands, \nblurry, jpeg artifacts, watermark, signature, text, \noldest, normal quality, low detail, bad drawing, deformed, disfigured, ugly, \nextra limbs, missing limbs, fused fingers, too many fingers, \npoorly drawn face, poorly drawn eyes, bad eyes",
+      "text": "worst quality, low quality, lowres, score_1, score_2, score_3, blurry, jpeg artifacts, , long fingers, sepia, bad anatomy, missing fingers, watermark, artist name",
       "clip": [
         "45",
         0
@@ -47,19 +47,19 @@
     },
     "class_type": "VAELoader",
     "_meta": {
-      "title": "加载VAE"
+      "title": "載入 VAE"
     }
   },
   "19": {
     "inputs": {
-      "seed": 411624188779070,
-      "steps": 35,
+      "seed": 949092636622747,
+      "steps": 30,
       "cfg": 4,
       "sampler_name": "dpmpp_2m_sde",
       "scheduler": "simple",
       "denoise": 1,
       "model": [
-        "60",
+        "44",
         0
       ],
       "positive": [
@@ -77,7 +77,7 @@
     },
     "class_type": "KSampler",
     "_meta": {
-      "title": "K采样器"
+      "title": "KSampler"
     }
   },
   "28": {
@@ -88,17 +88,17 @@
     },
     "class_type": "EmptyLatentImage",
     "_meta": {
-      "title": "空Latent图像"
+      "title": "空白潛在影像"
     }
   },
   "44": {
     "inputs": {
-      "unet_name": "anima-preview3-base.safetensors",
+      "unet_name": "JANIMA_v10.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
     "_meta": {
-      "title": "UNet加载器"
+      "title": "載入擴散模型"
     }
   },
   "45": {
@@ -109,7 +109,7 @@
     },
     "class_type": "CLIPLoader",
     "_meta": {
-      "title": "加载CLIP"
+      "title": "載入 CLIP"
     }
   },
   "46": {
@@ -122,21 +122,17 @@
     },
     "class_type": "SaveImage",
     "_meta": {
-      "title": "保存图像"
+      "title": "儲存圖片"
     }
   },
   "60": {
     "inputs": {
       "lora_name": "firedotinc_anima_kohya_low-lr_few_blocks_v4.safetensors",
-      "strength_model": 1,
-      "model": [
-        "44",
-        0
-      ]
+      "strength_model": 1
     },
     "class_type": "LoraLoaderModelOnly",
     "_meta": {
-      "title": "LoRA加载器（仅模型）"
+      "title": "LoraLoaderModelOnly"
     }
   }
 }

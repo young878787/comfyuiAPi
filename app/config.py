@@ -26,13 +26,14 @@ class Settings(BaseSettings):
 
     # ComfyUI API
     comfyui_api_url: str = "http://127.0.0.1:8188"
-    # Optional override; auto-derived from prompt_template when not set
-    comfyui_workflow_path: Optional[str] = None
 
     # Application Settings
     app_host: str = "0.0.0.0"
     app_port: int = 8000
-    session_storage_path: str = "./sessions"
+    # Preferred backend binding port for server startup. Falls back to APP_PORT.
+    backend_port: Optional[int] = None
+    outputs_dir: str = "./outputs"
+    default_workflow: str = "anima"
     log_level: str = "INFO"
     log_file: str = "./logs/app.log"
 
@@ -54,22 +55,21 @@ class Settings(BaseSettings):
     )
 
     @property
-    def sessions_path(self) -> Path:
-        """Get sessions directory as Path object."""
-        return Path(self.session_storage_path)
+    def outputs_path(self) -> Path:
+        """Get outputs directory as Path object."""
+        return Path(self.outputs_dir)
+
+    @property
+    def server_port(self) -> int:
+        """Get backend startup port, preferring BACKEND_PORT when set."""
+        return self.backend_port if self.backend_port is not None else self.app_port
 
     @property
     def workflow_path(self) -> Path:
         """
-        Get workflow file as Path object.
-
-        Auto-derived from prompt_template when COMFYUI_WORKFLOW_PATH is not set:
-          qwen  -> ./workflow/qwen image.json
-          anima -> ./workflow/Anima.json
+        Get default workflow file as Path object (for ComfyUIAdapter initialization compatibility).
         """
-        if self.comfyui_workflow_path:
-            return Path(self.comfyui_workflow_path)
-        if self.prompt_template.lower() == "anima":
+        if self.default_workflow.lower() == "anima":
             return Path("./workflow/Anima.json")
         return Path("./workflow/qwen image.json")
 

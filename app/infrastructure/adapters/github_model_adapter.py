@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 from app.config import settings
 from app.domain.exceptions import APIError
 from app.infrastructure.adapters.base_ai_adapter import BaseAIAdapter
+from app.infrastructure.retry_utils import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -54,31 +55,31 @@ class GitHubModelAdapter(BaseAIAdapter):
             "top_p": 1
         }
         
-        try:
+        async def _do_generate():
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                logger.info("Calling GitHub Models API", extra={
-                    "model": self.model,
-                    "message_count": len(messages)
-                })
-                
                 response = await client.post(
                     self.api_url,
                     headers=headers,
                     json=payload
                 )
-                
                 response.raise_for_status()
                 data = response.json()
-                
-                # Extract content from response
-                content = data["choices"][0]["message"]["content"]
-                
-                logger.info("GitHub Models API call successful", extra={
-                    "response_length": len(content)
-                })
-                
-                return content
-                
+                return data["choices"][0]["message"]["content"]
+        
+        try:
+            logger.info("Calling GitHub Models API", extra={
+                "model": self.model,
+                "message_count": len(messages)
+            })
+            
+            content = await retry_async(_do_generate, max_retries=3, delay=1.0, backoff=2.0)
+            
+            logger.info("GitHub Models API call successful", extra={
+                "response_length": len(content)
+            })
+            
+            return content
+            
         except httpx.HTTPStatusError as e:
             logger.error("GitHub Models API HTTP error", extra={
                 "status_code": e.response.status_code,

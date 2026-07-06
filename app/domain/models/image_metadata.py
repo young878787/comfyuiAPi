@@ -22,6 +22,12 @@ class ImageMetadata:
         sampler: Sampler name
         scheduler: Scheduler name
         generated_at: Generation timestamp
+        original_prompt: User's original input prompt
+        user_idea: User's modifications/ideas for prompt
+        final_prompt: AI modified/final prompt used
+        ai_model: AI model used for editing
+        ai_provider: AI provider used for editing
+        workflow_name: Name of the workflow file used
     """
     
     filename: str
@@ -35,6 +41,12 @@ class ImageMetadata:
     sampler: str
     scheduler: str
     generated_at: datetime
+    original_prompt: str = ""
+    user_idea: str = ""
+    final_prompt: str = ""
+    ai_model: str = ""
+    ai_provider: str = ""
+    workflow_name: str = ""
     
     def to_dict(self) -> dict:
         """Convert metadata to dictionary."""
@@ -50,6 +62,12 @@ class ImageMetadata:
             "sampler": self.sampler,
             "scheduler": self.scheduler,
             "generated_at": self.generated_at.isoformat(),
+            "original_prompt": self.original_prompt,
+            "user_idea": self.user_idea,
+            "final_prompt": self.final_prompt,
+            "ai_model": self.ai_model,
+            "ai_provider": self.ai_provider,
+            "workflow_name": self.workflow_name,
         }
     
     @classmethod
@@ -67,4 +85,10 @@ class ImageMetadata:
             sampler=data["sampler"],
             scheduler=data["scheduler"],
             generated_at=datetime.fromisoformat(data["generated_at"]),
+            original_prompt=data.get("original_prompt", ""),
+            user_idea=data.get("user_idea", ""),
+            final_prompt=data.get("final_prompt", ""),
+            ai_model=data.get("ai_model", ""),
+            ai_provider=data.get("ai_provider", ""),
+            workflow_name=data.get("workflow_name", ""),
         )
