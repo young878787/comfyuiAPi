@@ -17,7 +17,7 @@
   },
   "11": {
     "inputs": {
-      "text": "masterpiece, best quality, score_7, newest, safe, 1girl, solo, march 7th, honkai: star rail, preservation outfit, pink hair, medium hair, hair ornament, multicolored eyes, white collared shirt, blue skirt, blush, smile, one eye closed, sitting, looking at viewer.\n\nA cheerful anime illustration of March 7th from Honkai: Star Rail in her preservation form. She is sitting and facing the viewer with a playful wink, smiling with a slight blush on her face. Her pink hair and distinctive multicolored eyes are clearly visible, and she wears a white collared shirt with a blue skirt. The composition feels lively and dynamic.",
+      "text": "masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, nahida, genshin impact, white hair, short hair, green eyes, blush, mischievous smile, looking at viewer, sleeveless nightgown, white panties, sitting on bed, hugging knees, legs apart, underwear visible, front view, bedroom, morning, sunlight through window, messy bed sheets, soft morning light, warm atmosphere, anime coloring.\n\nA charming anime illustration of Nahida sitting on a messy bed in a cozy bedroom during the morning. She hugs her knees with a mischievous smile and blushing cheeks, looking directly at the viewer with playful eyes. She wears a loose sleeveless nightgown that reveals her white panties as she sits with her legs slightly apart. Soft morning sunlight streams through the window, illuminating the scene with a warm and intimate atmosphere.",
       "clip": [
         "45",
         0
@@ -52,7 +52,7 @@
   },
   "19": {
     "inputs": {
-      "seed": 949092636622747,
+      "seed": 979344551553546,
       "steps": 30,
       "cfg": 4,
       "sampler_name": "dpmpp_2m_sde",
@@ -114,7 +114,7 @@
   },
   "46": {
     "inputs": {
-      "filename_prefix": "Anima",
+      "filename_prefix": "Anima/2026-07-07/Anima",
       "images": [
         "8",
         0

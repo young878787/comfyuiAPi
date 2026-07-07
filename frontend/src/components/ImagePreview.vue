@@ -44,6 +44,35 @@
       </div>
     </div>
 
+    <!-- Action Toolbar under image -->
+    <div v-if="activeImage" class="image-toolbar-under">
+      <button @click="openImageFolder" class="toolbar-btn" title="開啟 ComfyUI 輸出資料夾並選取圖片">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f39c12" stroke-width="2.5">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>開啟資料夾</span>
+      </button>
+      <div class="toolbar-divider"></div>
+      <a :href="downloadUrl" download class="toolbar-btn" title="下載此圖片">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2ec4b6" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>下載圖片</span>
+      </a>
+      <div class="toolbar-divider"></div>
+      <button @click="useAsTemplate" class="toolbar-btn" title="帶入此提示詞與參數">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a29bfe" stroke-width="2.5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <span>套用參數</span>
+      </button>
+    </div>
+
     <!-- Image History Slider -->
     <div class="history-section" v-if="history.length > 0">
       <div class="section-header">
@@ -316,6 +345,38 @@ const selectImage = (img) => {
 const useAsTemplate = () => {
   if (props.activeImage) {
     emit('apply-template', props.activeImage)
+  }
+}
+
+const openImageFolder = async () => {
+  if (!props.activeImage) return
+  
+  // Extract date and filename from URL (e.g. /api/image/view/2026-07-07/001.png)
+  const parts = props.activeImage.url.split('/')
+  if (parts.length >= 3) {
+    const dateStr = parts[parts.length - 2]
+    const filename = parts[parts.length - 1]
+    const workflowName = props.activeImage.metadata?.workflow_name || 'anima'
+    
+    try {
+      const response = await fetch('/api/image/open-folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          date_str: dateStr,
+          filename: filename,
+          workflow: workflowName
+        })
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        alert('無法開啟資料夾: ' + (data.detail || '未知錯誤'))
+      }
+    } catch (err) {
+      alert('連線伺服器失敗: ' + err.message)
+    }
   }
 }
 
@@ -855,5 +916,51 @@ watch(() => props.activeImage, () => {
 @keyframes lightbox-scale-in {
   from { transform: scale(0.9); }
   to { transform: scale(1); }
+}
+
+/* Under-image Action Toolbar styles */
+.image-toolbar-under {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-top: 4px;
+  backdrop-filter: blur(10px);
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  user-select: none;
+}
+
+.toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.08);
 }
 </style>

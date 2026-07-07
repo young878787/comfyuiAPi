@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     # Preferred backend binding port for server startup. Falls back to APP_PORT.
     backend_port: Optional[int] = None
     outputs_dir: str = "./outputs"
+    comfyui_output_dir: str = Field(
+        default="D:\\ComfyUI\\output",
+        validation_alias=AliasChoices("comfyui_output_dir", "COMFYUI_OUTPUT_DIR")
+    )
     default_workflow: str = "anima"
     log_level: str = "INFO"
     log_file: str = "./logs/app.log"

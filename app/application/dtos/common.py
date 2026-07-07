@@ -54,3 +54,11 @@ class ImageListResponse(BaseModel):
     date: str
     images: List[str]
     latest_image: Optional[str] = None
+
+
+class OpenFolderRequest(BaseModel):
+    """Request options for opening local file manager at the output path."""
+    date_str: str
+    filename: Optional[str] = None
+    workflow: Optional[str] = "anima"
+

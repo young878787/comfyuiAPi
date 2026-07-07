@@ -9,7 +9,8 @@ import logging
 
 from app.application.dtos.common import (
     ImageResponse,
-    ImageListResponse
+    ImageListResponse,
+    OpenFolderRequest
 )
 from app.application.services.image_service import ImageService
 from app.application.services.metadata_parser import parse_image_metadata
@@ -153,3 +154,82 @@ async def get_image_metadata(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/open-folder")
+async def open_folder(request: OpenFolderRequest):
+    """Open the local folder of ComfyUI output (or fallback to local app outputs) in Windows Explorer."""
+    try:
+        workflow_name = request.workflow or "Anima"
+        comfy_dir = settings.comfyui_output_dir
+        
+        target_dir = None
+        target_file = None
+        
+        # 1. Try to locate ComfyUI output folder
+        if comfy_dir:
+            from pathlib import Path
+            comfy_base = Path(comfy_dir)
+            if comfy_base.exists():
+                # Check different cases of workflow name folder
+                wf_names = [workflow_name, workflow_name.capitalize(), workflow_name.lower()]
+                for wf in wf_names:
+                    temp_dir = comfy_base / wf / request.date_str
+                    if temp_dir.exists():
+                        target_dir = temp_dir
+                        break
+                        
+                # If target directory is found, try to find matching image file to highlight
+                if target_dir and request.filename:
+                    try:
+                        stem = Path(request.filename).stem  # e.g., "001"
+                        idx_num = int(stem)
+                        # ComfyUI output files usually have padding numbers (e.g. Anima_00001_.png)
+                        patterns = [
+                            f"*{idx_num:05d}*.png",
+                            f"*{idx_num:04d}*.png",
+                            f"*{idx_num:03d}*.png",
+                            f"*{idx_num}*.png"
+                        ]
+                        for pattern in patterns:
+                            matches = list(target_dir.glob(pattern))
+                            if matches:
+                                target_file = matches[0]
+                                break
+                    except Exception as ex:
+                        logger.warning(f"Error parsing image index to locate ComfyUI file: {ex}")
+                        
+        # 2. Fallback to local outputs folder if ComfyUI output folder is not found/accessible
+        if not target_dir or not target_dir.exists():
+            from pathlib import Path
+            local_base = Path(settings.outputs_dir)
+            target_dir = local_base / request.date_str
+            if request.filename:
+                local_file = target_dir / request.filename
+                if local_file.exists():
+                    target_file = local_file
+
+        # 3. Open in Windows Explorer
+        import subprocess
+        if target_file and target_file.exists():
+            path_str = str(target_file.absolute()).replace('/', '\\')
+            subprocess.Popen(f'explorer.exe /select,"{path_str}"')
+            logger.info(f"Opened Explorer with selected file: {path_str}")
+        elif target_dir and target_dir.exists():
+            path_str = str(target_dir.absolute()).replace('/', '\\')
+            subprocess.Popen(f'explorer.exe "{path_str}"')
+            logger.info(f"Opened Explorer folder: {path_str}")
+        else:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Neither ComfyUI folder nor local fallback directory could be found for date {request.date_str}."
+            )
+            
+        return {"success": True}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to open folder: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
