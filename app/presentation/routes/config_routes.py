@@ -43,6 +43,16 @@ def get_available_workflows() -> List[WorkflowInfo]:
         "negative_prompt": "worst quality, low quality, score_1, score_2, score_3, lowres, bad anatomy, bad hands, bad fingers, extra fingers, missing fingers, deformed hands, mutated hands, blurry, jpeg artifacts, watermark, signature, text, oldests, normal quality, low detail, bad drawing, deformed, disfigured, ugly, extra limbs, missing limbs, fused fingers, too many fingers, poorly drawn face, poorly drawn eyes, bad eyes"
     }
     
+    anima_upscale_defaults = {
+        "steps": 14,
+        "cfg": 5.0,
+        "width": 1536,
+        "height": 1536,
+        "sampler": "er_sde",
+        "scheduler": "sgm_uniform",
+        "negative_prompt": "lowres, extra digit, fewer digits, worst quality, jpeg artifacts, signature, watermark, artist name, bad perspective, artistic error, bad proportions, disfigured, deformed body, malformed limbs, flat color, outline, nsfw, sepia, logo"
+    }
+    
     qwen_defaults = {
         "steps": 12,
         "cfg": 1.0,
@@ -56,7 +66,14 @@ def get_available_workflows() -> List[WorkflowInfo]:
     if workflow_dir.exists():
         for f in workflow_dir.glob("*.json"):
             name = f.stem.lower().replace(" ", "")
-            if "anima" in name:
+            if "放大" in name or "upscale" in name:
+                workflows.append(WorkflowInfo(
+                    name=f.stem.lower().replace(" ", ""),
+                    display_name="Anima 放大/圖生圖",
+                    file=f.name,
+                    defaults=anima_upscale_defaults
+                ))
+            elif "anima" in name:
                 workflows.append(WorkflowInfo(
                     name="anima",
                     display_name="Anima 動漫模型",

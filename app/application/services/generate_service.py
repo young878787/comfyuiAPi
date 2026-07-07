@@ -219,6 +219,34 @@ class GenerateService:
             else:
                 seeds.append(random.randint(1, 2**32 - 1))
                 
+        # Upload reference image if provided
+        input_image_name = None
+        if request.image_base64:
+            try:
+                import base64
+                import time
+                import random
+                
+                # Determine extension
+                ext = "png"
+                if request.image_mime_type:
+                    if "jpeg" in request.image_mime_type or "jpg" in request.image_mime_type:
+                        ext = "jpg"
+                    elif "webp" in request.image_mime_type:
+                        ext = "webp"
+                
+                filename = f"upscale_{int(time.time())}_{random.randint(1000, 9999)}.{ext}"
+                image_bytes = base64.b64decode(request.image_base64)
+                
+                # Upload using comfyui_adapter from image_service
+                upload_res = await self.image_service.comfyui_adapter.upload_image(image_bytes, filename)
+                input_image_name = upload_res.get("name")
+                logger.info(f"Uploaded reference image as {input_image_name} to ComfyUI")
+            except Exception as e:
+                logger.error("Failed to decode or upload reference image", exc_info=True)
+                yield f"data: {json.dumps({'type': 'error', 'message': f'上傳參考圖片失敗: {str(e)}'})}\n\n"
+                return
+
         # We use a queue to receive pipeline stage updates and results in real-time
         event_queue = asyncio.Queue()
         
@@ -271,7 +299,8 @@ class GenerateService:
                     ai_provider=ai_provider,
                     workflow_name=request.workflow,
                     workflow_path=str(workflow_path),
-                    checkpoint=request.checkpoint
+                    checkpoint=request.checkpoint,
+                    input_image_name=input_image_name
                 )
                 await event_queue.put({
                     "type": "success",

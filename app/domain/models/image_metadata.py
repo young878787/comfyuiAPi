@@ -49,6 +49,7 @@ class ImageMetadata:
     ai_provider: str = ""
     workflow_name: str = ""
     checkpoint: str = ""
+    comfyui_filename: str = ""
     
     def to_dict(self) -> dict:
         """Convert metadata to dictionary."""
@@ -71,6 +72,7 @@ class ImageMetadata:
             "ai_provider": self.ai_provider,
             "workflow_name": self.workflow_name,
             "checkpoint": self.checkpoint,
+            "comfyui_filename": self.comfyui_filename,
         }
     
     @classmethod
@@ -95,4 +97,5 @@ class ImageMetadata:
             ai_provider=data.get("ai_provider", ""),
             workflow_name=data.get("workflow_name", ""),
             checkpoint=data.get("checkpoint", ""),
+            comfyui_filename=data.get("comfyui_filename", ""),
         )

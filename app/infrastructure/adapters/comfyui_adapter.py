@@ -99,6 +99,7 @@ class ComfyUIAdapter:
         sampler: str,
         scheduler: str,
         checkpoint: Optional[str] = None,
+        input_image_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Inject generation parameters into the workflow.
@@ -119,6 +120,7 @@ class ComfyUIAdapter:
                 sampler,
                 scheduler,
                 checkpoint,
+                input_image_name,
             )
         return self._update_api_format_params(
             workflow,
@@ -132,6 +134,7 @@ class ComfyUIAdapter:
             sampler,
             scheduler,
             checkpoint,
+            input_image_name,
         )
 
     def _update_ui_format_params(
@@ -147,6 +150,7 @@ class ComfyUIAdapter:
         sampler: str,
         scheduler: str,
         checkpoint: Optional[str] = None,
+        input_image_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Update parameters for UI-format workflows (e.g. qwen image.json).
@@ -180,12 +184,19 @@ class ComfyUIAdapter:
                 node["widgets_values"][0] = width
                 node["widgets_values"][1] = height
 
+            elif ntype == "LoadImage" and input_image_name:
+                if "widgets_values" in node and len(node["widgets_values"]) > 0:
+                    node["widgets_values"][0] = input_image_name
+
             # Dynamically replace checkpoint model if provided
             if checkpoint:
                 if ntype == "CheckpointLoaderSimple":
                     if "widgets_values" in node and len(node["widgets_values"]) > 0:
                         node["widgets_values"][0] = checkpoint
                 elif ntype == "UNETLoader":
+                    if "widgets_values" in node and len(node["widgets_values"]) > 0:
+                        node["widgets_values"][0] = checkpoint
+                elif ntype == "UNet loader with Name (Image Saver)":
                     if "widgets_values" in node and len(node["widgets_values"]) > 0:
                         node["widgets_values"][0] = checkpoint
 
@@ -198,6 +209,7 @@ class ComfyUIAdapter:
                 "cfg": cfg,
                 "seed": seed,
                 "checkpoint": checkpoint,
+                "input_image_name": input_image_name,
             },
         )
         return workflow
@@ -215,6 +227,7 @@ class ComfyUIAdapter:
         sampler: str,
         scheduler: str,
         checkpoint: Optional[str] = None,
+        input_image_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Update parameters for API-format workflows (e.g. Anima.json).
@@ -222,13 +235,42 @@ class ComfyUIAdapter:
         Nodes are identified by class_type + _meta.title rather than
         hard-coded IDs, making this robust to future workflow changes.
         """
-        for node_data in workflow.values():
+        # Identify positive/negative text source nodes (e.g. PrimitiveStringMultiline linked to CLIPTextEncode)
+        pos_source_id = None
+        neg_source_id = None
+
+        for nid, node_data in workflow.items():
+            if not isinstance(node_data, dict):
+                continue
+            class_type = node_data.get("class_type", "")
+            meta_title = node_data.get("_meta", {}).get("title", "")
+            inputs = node_data.get("inputs", {})
+
+            if class_type == "CLIPTextEncode":
+                title_lower = meta_title.lower()
+                text_input = inputs.get("text")
+                if isinstance(text_input, list) and len(text_input) > 0:
+                    src_id = str(text_input[0])
+                    if "positive" in title_lower:
+                        pos_source_id = src_id
+                    elif "negative" in title_lower:
+                        neg_source_id = src_id
+
+        for nid, node_data in workflow.items():
             if not isinstance(node_data, dict):
                 continue
 
             class_type = node_data.get("class_type", "")
             meta_title = node_data.get("_meta", {}).get("title", "")
             inputs = node_data.get("inputs", {})
+
+            # Update string source nodes directly if they exist
+            if nid == pos_source_id:
+                inputs["value"] = positive_prompt
+                continue
+            if nid == neg_source_id:
+                inputs["value"] = negative_prompt
+                continue
 
             if class_type == "CLIPTextEncode":
                 title_lower = meta_title.lower()
@@ -244,15 +286,27 @@ class ComfyUIAdapter:
                 inputs["sampler_name"] = sampler
                 inputs["scheduler"] = scheduler
 
+            elif class_type == "Input Parameters (Image Saver)":
+                inputs["seed"] = seed
+                inputs["steps"] = steps
+                inputs["cfg"] = cfg
+                inputs["sampler"] = sampler
+                inputs["scheduler"] = scheduler
+
             elif class_type in ("EmptyLatentImage", "EmptySD3LatentImage"):
                 inputs["width"] = width
                 inputs["height"] = height
+
+            elif class_type == "LoadImage" and input_image_name:
+                inputs["image"] = input_image_name
 
             # Dynamically replace checkpoint model if provided
             if checkpoint:
                 if class_type == "CheckpointLoaderSimple":
                     inputs["ckpt_name"] = checkpoint
                 elif class_type == "UNETLoader":
+                    inputs["unet_name"] = checkpoint
+                elif class_type == "UNet loader with Name (Image Saver)":
                     inputs["unet_name"] = checkpoint
 
         logger.info(
@@ -264,6 +318,7 @@ class ComfyUIAdapter:
                 "cfg": cfg,
                 "seed": seed,
                 "checkpoint": checkpoint,
+                "input_image_name": input_image_name,
             },
         )
         return workflow
@@ -475,6 +530,32 @@ class ComfyUIAdapter:
             )
             raise ImageGenerationError(f"Failed to download image: {str(e)}")
 
+    async def upload_image(self, image_bytes: bytes, filename: str) -> Dict[str, Any]:
+        """
+        Upload an image to ComfyUI input folder via ComfyUI API /upload/image.
+        
+        Returns:
+            dict: ComfyUI response containing name, subfolder, and type
+        """
+        url = f"http://{self.server_address}/upload/image"
+        
+        async def _do_upload():
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                files = {
+                    "image": (filename, image_bytes, "image/png")
+                }
+                response = await client.post(url, files=files)
+                response.raise_for_status()
+                return response.json()
+
+        try:
+            result = await retry_async(_do_upload, max_retries=3, delay=1.0, backoff=2.0)
+            logger.info("Image uploaded to ComfyUI successfully: %s", result.get("name"))
+            return result
+        except Exception as e:
+            logger.error("Failed to upload image to ComfyUI", exc_info=True)
+            raise APIError(f"Failed to upload image to ComfyUI: {str(e)}")
+
     # ------------------------------------------------------------------
     # Main entry point
     # ------------------------------------------------------------------
@@ -492,6 +573,7 @@ class ComfyUIAdapter:
         scheduler: str,
         workflow_path: Optional[str] = None,
         checkpoint: Optional[str] = None,
+        input_image_name: Optional[str] = None,
     ) -> Tuple[bytes, Dict[str, Any]]:
         """
         Full image generation pipeline: load → update → queue → poll → download.
@@ -516,6 +598,7 @@ class ComfyUIAdapter:
                 sampler,
                 scheduler,
                 checkpoint,
+                input_image_name,
             )
 
             prompt_id = await self.queue_prompt(workflow)

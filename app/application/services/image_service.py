@@ -48,7 +48,8 @@ class ImageService:
         ai_provider: str = "",
         workflow_name: str = "anima",
         workflow_path: Optional[str] = None,
-        checkpoint: Optional[str] = None
+        checkpoint: Optional[str] = None,
+        input_image_name: Optional[str] = None
     ) -> Tuple[str, ImageMetadata]:
         """
         Generate image using ComfyUI.
@@ -70,6 +71,7 @@ class ImageService:
             workflow_name: Workflow configuration display/file name
             workflow_path: Absolute path to the workflow JSON file to load
             checkpoint: Dynamic checkpoint model name
+            input_image_name: Reference image name uploaded to ComfyUI
             
         Returns:
             Tuple[str, ImageMetadata]: (saved_path, metadata)
@@ -89,7 +91,8 @@ class ImageService:
             "height": height,
             "steps": steps,
             "seed": seed,
-            "checkpoint": checkpoint
+            "checkpoint": checkpoint,
+            "input_image_name": input_image_name
         })
         
         image_data, generation_info = await self.comfyui_adapter.generate_image(
@@ -103,7 +106,8 @@ class ImageService:
             sampler=sampler,
             scheduler=scheduler,
             workflow_path=workflow_path,
-            checkpoint=checkpoint
+            checkpoint=checkpoint,
+            input_image_name=input_image_name
         )
         
         # Create metadata
@@ -125,7 +129,8 @@ class ImageService:
             ai_model=ai_model,
             ai_provider=ai_provider,
             workflow_name=workflow_name,
-            checkpoint=checkpoint or ""
+            checkpoint=checkpoint or "",
+            comfyui_filename=generation_info.get("filename", "")
         )
         
         # Save image

@@ -10,6 +10,16 @@
         <span class="badge">v1.1</span>
       </div>
       
+      <!-- Navigation Tabs -->
+      <div class="header-nav">
+        <button :class="['nav-tab', activeTab === 'txt2img' ? 'active' : '']" @click="handleTabChange('txt2img')">
+          ✍️ 文生圖
+        </button>
+        <button :class="['nav-tab', activeTab === 'img2img' ? 'active' : '']" @click="handleTabChange('img2img')">
+          🖼️ 圖生圖 (放大)
+        </button>
+      </div>
+
       <div class="header-actions">
         <StatusIndicator :connected="connected" />
       </div>
@@ -20,8 +30,8 @@
       <!-- Left Panel: Prompt Inputs & Parameter Form -->
       <section class="panel-left glass-card">
         <div class="section-title">
-          <h3>🎨 創作控制台</h3>
-          <p>輸入正向提示詞與修改想法，由 AI 自動轉換並送往 ComfyUI 生成圖片</p>
+          <h3>🎨 {{ activeTab === 'txt2img' ? '創作控制台' : '批量放大控制台' }}</h3>
+          <p>{{ activeTab === 'txt2img' ? '輸入正向提示詞與修改想法，由 AI 自動轉換並送往 ComfyUI 生成圖片' : '導入圖片佇列，系統將讀取提示詞並送往 ComfyUI 批量放大處理' }}</p>
         </div>
 
         <div class="panel-content scrollable">
@@ -29,7 +39,7 @@
           <div class="panel-section">
             <WorkflowSelector
               v-model="activeWorkflow"
-              :workflows="workflows"
+              :workflows="filteredWorkflows"
               @change="handleWorkflowChange"
             />
           </div>
@@ -37,6 +47,7 @@
           <!-- Prompt Controls -->
           <div class="panel-section">
             <PromptPanel
+              v-if="activeTab === 'txt2img'"
               :generating="generating"
               :progress-percentage="progressPercentage"
               :progress-message="progressMessage"
@@ -44,6 +55,12 @@
               @generate="handleGenerate"
               @analyze-image="handleAnalyzeImage"
               @apply-parsed-metadata="handleApplyParsedMetadata"
+            />
+            <Img2ImgPanel
+              v-else
+              :workflow="activeWorkflow"
+              :params="params"
+              @image-generated="loadHistory"
             />
           </div>
 
@@ -77,12 +94,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import StatusIndicator from './components/StatusIndicator.vue'
 import WorkflowSelector from './components/WorkflowSelector.vue'
 import PromptPanel from './components/PromptPanel.vue'
+import Img2ImgPanel from './components/Img2ImgPanel.vue'
 import ParameterForm from './components/ParameterForm.vue'
 import ImagePreview from './components/ImagePreview.vue'
+
+// Tab state
+const activeTab = ref('txt2img') // 'txt2img' or 'img2img'
 
 // Connection state
 const connected = ref(false)
@@ -145,6 +166,25 @@ const applyWorkflowDefaults = (defaults) => {
     sampler: defaults.sampler || params.value.sampler,
     scheduler: defaults.scheduler || params.value.scheduler,
     negative_prompt: defaults.negative_prompt || params.value.negative_prompt
+  }
+}
+
+// Filter workflows based on active tab
+const filteredWorkflows = computed(() => {
+  if (activeTab.value === 'img2img') {
+    return workflows.value.filter(w => w.name.includes('放大') || w.name.includes('upscale'))
+  } else {
+    return workflows.value.filter(w => !w.name.includes('放大') && !w.name.includes('upscale'))
+  }
+})
+
+// Tab Switch Handler
+const handleTabChange = (tab) => {
+  activeTab.value = tab
+  const list = filteredWorkflows.value
+  if (list.length > 0) {
+    activeWorkflow.value = list[0].name
+    applyWorkflowDefaults(list[0].defaults)
   }
 }
 
@@ -562,5 +602,41 @@ body {
 
 .scrollable::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Navigation Tabs in Header */
+.header-nav {
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-tab:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-tab.active {
+  color: #fff;
+  background: #6c5ce7;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
 }
 </style>

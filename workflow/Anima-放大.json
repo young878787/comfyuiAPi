@@ -1,0 +1,357 @@
+{
+  "86": {
+    "inputs": {
+      "image": "Anima_00078_.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "載入圖片"
+    }
+  },
+  "104": {
+    "inputs": {
+      "__lm_autocomplete_meta_text": {
+        "version": 1,
+        "textWidgetName": "text"
+      },
+      "text": "",
+      "loras": {
+        "__value__": []
+      },
+      "model": [
+        "132:130",
+        0
+      ],
+      "clip": [
+        "132:129",
+        0
+      ]
+    },
+    "class_type": "Lora Loader (LoraManager)",
+    "_meta": {
+      "title": "Lora Loader (LoraManager)"
+    }
+  },
+  "106": {
+    "inputs": {
+      "image_a": [
+        "86",
+        0
+      ],
+      "image_b": [
+        "166",
+        0
+      ]
+    },
+    "class_type": "ImageCompareNode",
+    "_meta": {
+      "title": "Image Compare"
+    }
+  },
+  "121": {
+    "inputs": {
+      "filename": "%time",
+      "path": "AnimaUpscaled/%date:yyyy-MM-dd%/",
+      "extension": "webp",
+      "steps": [
+        "173",
+        1
+      ],
+      "cfg": [
+        "173",
+        2
+      ],
+      "modelname": [
+        "132:130",
+        1
+      ],
+      "sampler_name": [
+        "172:138",
+        0
+      ],
+      "scheduler_name": [
+        "172:139",
+        0
+      ],
+      "positive": [
+        "137:136",
+        0
+      ],
+      "negative": [
+        "137:135",
+        0
+      ],
+      "seed_value": [
+        "173",
+        0
+      ],
+      "width": [
+        "172:125",
+        0
+      ],
+      "height": [
+        "172:125",
+        1
+      ],
+      "lossless_webp": false,
+      "quality_jpeg_or_webp": 100,
+      "optimize_png": false,
+      "counter": 0,
+      "denoise": [
+        "173",
+        5
+      ],
+      "clip_skip": 0,
+      "time_format": "%Y-%m-%d-%H%M%S",
+      "save_workflow_as_json": false,
+      "embed_workflow": true,
+      "additional_hashes": "",
+      "download_civitai_data": true,
+      "easy_remix": true,
+      "show_preview": true,
+      "custom": "",
+      "images": [
+        "166",
+        0
+      ]
+    },
+    "class_type": "Image Saver",
+    "_meta": {
+      "title": "Image Saver"
+    }
+  },
+  "166": {
+    "inputs": {
+      "upscale_by": 2,
+      "seed": [
+        "173",
+        0
+      ],
+      "steps": [
+        "173",
+        1
+      ],
+      "cfg": [
+        "173",
+        2
+      ],
+      "sampler_name": [
+        "173",
+        3
+      ],
+      "scheduler": [
+        "173",
+        4
+      ],
+      "denoise": [
+        "173",
+        5
+      ],
+      "fovea_strength": 3,
+      "sharpness": 0.5,
+      "mask_inertia": 0.85,
+      "lllite_model_name": "animaTileRepair_v20.safetensors",
+      "lllite_strength": 0.9,
+      "lllite_start_percent": 0,
+      "lllite_end_percent": 0.9,
+      "mode_type": "Linear",
+      "tile_width": [
+        "174",
+        0
+      ],
+      "tile_height": [
+        "174",
+        1
+      ],
+      "mask_blur": 16,
+      "tile_padding": 128,
+      "seam_fix_mode": "None",
+      "seam_fix_denoise": 0.15,
+      "seam_fix_width": 64,
+      "seam_fix_mask_blur": 8,
+      "seam_fix_padding": 16,
+      "force_uniform_tiles": true,
+      "tiled_decode": false,
+      "image": [
+        "86",
+        0
+      ],
+      "model": [
+        "104",
+        0
+      ],
+      "positive": [
+        "137:133",
+        0
+      ],
+      "negative": [
+        "137:134",
+        0
+      ],
+      "vae": [
+        "132:128",
+        0
+      ],
+      "upscale_model": [
+        "132:131",
+        0
+      ]
+    },
+    "class_type": "UltimateSDUpscaleFLSLLLite",
+    "_meta": {
+      "title": "Ultimate SD Upscale (FLS + LLLite Tile Repair)"
+    }
+  },
+  "173": {
+    "inputs": {
+      "seed": 686891404561922,
+      "steps": 14,
+      "cfg": 5,
+      "sampler": "er_sde",
+      "scheduler": "sgm_uniform",
+      "denoise": 0.6
+    },
+    "class_type": "Input Parameters (Image Saver)",
+    "_meta": {
+      "title": "Input Parameters (Image Saver)"
+    }
+  },
+  "174": {
+    "inputs": {
+      "target_size": 1536,
+      "multiple_of": 16,
+      "image": [
+        "86",
+        0
+      ]
+    },
+    "class_type": "Width and height for scaling image to ideal resolution 🪴",
+    "_meta": {
+      "title": "tile resolution"
+    }
+  },
+  "132:129": {
+    "inputs": {
+      "clip_name": "qwen_3_06b_base.safetensors",
+      "type": "stable_diffusion"
+    },
+    "class_type": "CLIPLoaderGGUF",
+    "_meta": {
+      "title": "CLIPLoader (GGUF)"
+    }
+  },
+  "132:128": {
+    "inputs": {
+      "vae_name": "qwen_image_vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "載入 VAE"
+    }
+  },
+  "132:131": {
+    "inputs": {
+      "model_name": "4x-UltraSharp.pth"
+    },
+    "class_type": "UpscaleModelLoader",
+    "_meta": {
+      "title": "載入放大模型"
+    }
+  },
+  "132:130": {
+    "inputs": {
+      "unet_name": "novaAnimeAM_v30.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNet loader with Name (Image Saver)",
+    "_meta": {
+      "title": "UNet loader with Name (Image Saver)"
+    }
+  },
+  "137:133": {
+    "inputs": {
+      "text": [
+        "137:136",
+        0
+      ],
+      "clip": [
+        "104",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)"
+    }
+  },
+  "137:134": {
+    "inputs": {
+      "text": [
+        "137:135",
+        0
+      ],
+      "clip": [
+        "104",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Negativa Prompt)"
+    }
+  },
+  "137:136": {
+    "inputs": {
+      "value": "masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, nahida, genshin impact, white hair, short hair, green eyes, blush, mischievous smile, looking at viewer, sleeveless nightgown, white panties, sitting on bed, hugging knees, legs apart, underwear visible, front view, bedroom, morning, sunlight through window, messy bed sheets, soft morning light, warm atmosphere, anime coloring.\n\nA charming anime illustration of Nahida sitting on a messy bed in a cozy bedroom during the morning. She hugs her knees with a mischievous smile and blushing cheeks, looking directly at the viewer with playful eyes. She wears a loose sleeveless nightgown that reveals her white panties as she sits with her legs slightly apart. Soft morning sunlight streams through the window, illuminating the scene with a warm and intimate atmosphere."
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "字串（多行）"
+    }
+  },
+  "137:135": {
+    "inputs": {
+      "value": "lowres, extra digit, fewer digits, worst quality, jpeg artifacts, signature, watermark, artist name, bad perspective, artistic error, bad proportions, disfigured, deformed body, malformed limbs, flat color, outline, nsfw, sepia, logo, "
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "字串（多行）"
+    }
+  },
+  "172:138": {
+    "inputs": {
+      "value": [
+        "173",
+        3
+      ]
+    },
+    "class_type": "Any to String (Image Saver)",
+    "_meta": {
+      "title": "Any to String (Image Saver)"
+    }
+  },
+  "172:125": {
+    "inputs": {
+      "image": [
+        "166",
+        0
+      ]
+    },
+    "class_type": "GetImageSize+",
+    "_meta": {
+      "title": "🔧 Get Image Size"
+    }
+  },
+  "172:139": {
+    "inputs": {
+      "value": [
+        "173",
+        4
+      ]
+    },
+    "class_type": "Any to String (Image Saver)",
+    "_meta": {
+      "title": "Any to String (Image Saver)"
+    }
+  }
+}

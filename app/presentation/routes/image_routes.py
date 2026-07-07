@@ -157,7 +157,10 @@ async def get_image_metadata(
 
 
 @router.post("/open-folder")
-async def open_folder(request: OpenFolderRequest):
+async def open_folder(
+    request: OpenFolderRequest,
+    service: ImageService = Depends(get_image_service)
+):
     """Open the local folder of ComfyUI output (or fallback to local app outputs) in Windows Explorer."""
     try:
         workflow_name = request.workflow or "Anima"
@@ -172,7 +175,10 @@ async def open_folder(request: OpenFolderRequest):
             comfy_base = Path(comfy_dir)
             if comfy_base.exists():
                 # Check different cases of workflow name folder
-                wf_names = [workflow_name, workflow_name.capitalize(), workflow_name.lower()]
+                if "放大" in workflow_name or "upscale" in workflow_name.lower():
+                    wf_names = ["AnimaUpscaled"]
+                else:
+                    wf_names = [workflow_name, workflow_name.capitalize(), workflow_name.lower()]
                 for wf in wf_names:
                     temp_dir = comfy_base / wf / request.date_str
                     if temp_dir.exists():
@@ -181,24 +187,44 @@ async def open_folder(request: OpenFolderRequest):
                         
                 # If target directory is found, try to find matching image file to highlight
                 if target_dir and request.filename:
+                    # Try to get comfyui_filename from local metadata first
+                    comfyui_filename = None
                     try:
-                        stem = Path(request.filename).stem  # e.g., "001"
-                        idx_num = int(stem)
-                        # ComfyUI output files usually have padding numbers (e.g. Anima_00001_.png)
-                        patterns = [
-                            f"*{idx_num:05d}*.png",
-                            f"*{idx_num:04d}*.png",
-                            f"*{idx_num:03d}*.png",
-                            f"*{idx_num}*.png"
-                        ]
-                        for pattern in patterns:
-                            matches = list(target_dir.glob(pattern))
-                            if matches:
-                                target_file = matches[0]
-                                break
-                    except Exception as ex:
-                        logger.warning(f"Error parsing image index to locate ComfyUI file: {ex}")
-                        
+                        metadata = await service.get_image_metadata(request.date_str, request.filename)
+                        if metadata:
+                            comfyui_filename = getattr(metadata, 'comfyui_filename', None)
+                    except Exception as e:
+                        logger.warning(f"Error reading image metadata for open-folder: {e}")
+                    
+                    if comfyui_filename:
+                        temp_file = target_dir / comfyui_filename
+                        if temp_file.exists():
+                            target_file = temp_file
+                    
+                    # Fallback to number index search if comfyui_filename not found or doesn't exist
+                    if not target_file:
+                        try:
+                            stem = Path(request.filename).stem  # e.g., "001"
+                            idx_num = int(stem)
+                            # ComfyUI output files usually have padding numbers (e.g. Anima_00001_.png)
+                            patterns = [
+                                f"*{idx_num:05d}*.png",
+                                f"*{idx_num:04d}*.png",
+                                f"*{idx_num:03d}*.png",
+                                f"*{idx_num}*.png",
+                                f"*{idx_num:05d}*.webp",
+                                f"*{idx_num:04d}*.webp",
+                                f"*{idx_num:03d}*.webp",
+                                f"*{idx_num}*.webp"
+                            ]
+                            for pattern in patterns:
+                                matches = list(target_dir.glob(pattern))
+                                if matches:
+                                    target_file = matches[0]
+                                    break
+                        except Exception as ex:
+                            logger.warning(f"Error parsing image index to locate ComfyUI file: {ex}")
+                            
         # 2. Fallback to local outputs folder if ComfyUI output folder is not found/accessible
         if not target_dir or not target_dir.exists():
             from pathlib import Path
