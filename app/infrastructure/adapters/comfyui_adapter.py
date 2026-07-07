@@ -6,12 +6,13 @@ import urllib.parse
 import logging
 import asyncio
 from pathlib import Path
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from datetime import datetime
+import httpx
 
 from app.config import settings
 from app.domain.exceptions import ImageGenerationError, APIError
-from app.infrastructure.retry_utils import retry_sync
+from app.infrastructure.retry_utils import retry_async
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class ComfyUIAdapter:
     # Workflow loading
     # ------------------------------------------------------------------
 
-    def load_workflow(self) -> Dict[str, Any]:
+    def load_workflow(self, workflow_path: Optional[str] = None) -> Dict[str, Any]:
         """
         Load ComfyUI workflow from JSON file.
 
@@ -43,31 +44,32 @@ class ComfyUIAdapter:
         Raises:
             ImageGenerationError: If the file cannot be loaded or parsed
         """
+        target_path = workflow_path or self.workflow_path
         try:
-            with open(self.workflow_path, "r", encoding="utf-8") as f:
+            with open(target_path, "r", encoding="utf-8") as f:
                 workflow = json.load(f)
 
             fmt = "UI" if self._is_ui_format(workflow) else "API"
             logger.info(
                 "Workflow loaded (%s format)",
                 fmt,
-                extra={"workflow_path": str(self.workflow_path)},
+                extra={"workflow_path": str(target_path)},
             )
             return workflow
 
         except FileNotFoundError:
             logger.error(
                 "Workflow file not found",
-                extra={"workflow_path": str(self.workflow_path)},
+                extra={"workflow_path": str(target_path)},
             )
             raise ImageGenerationError(
-                f"Workflow file not found: {self.workflow_path}"
+                f"Workflow file not found: {target_path}"
             )
 
         except json.JSONDecodeError as e:
             logger.error(
                 "Invalid workflow JSON",
-                extra={"workflow_path": str(self.workflow_path), "error": str(e)},
+                extra={"workflow_path": str(target_path), "error": str(e)},
             )
             raise ImageGenerationError(f"Invalid workflow JSON: {str(e)}")
 
@@ -96,6 +98,7 @@ class ComfyUIAdapter:
         seed: int,
         sampler: str,
         scheduler: str,
+        checkpoint: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Inject generation parameters into the workflow.
@@ -115,6 +118,7 @@ class ComfyUIAdapter:
                 seed,
                 sampler,
                 scheduler,
+                checkpoint,
             )
         return self._update_api_format_params(
             workflow,
@@ -127,6 +131,7 @@ class ComfyUIAdapter:
             seed,
             sampler,
             scheduler,
+            checkpoint,
         )
 
     def _update_ui_format_params(
@@ -141,6 +146,7 @@ class ComfyUIAdapter:
         seed: int,
         sampler: str,
         scheduler: str,
+        checkpoint: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Update parameters for UI-format workflows (e.g. qwen image.json).
@@ -174,6 +180,15 @@ class ComfyUIAdapter:
                 node["widgets_values"][0] = width
                 node["widgets_values"][1] = height
 
+            # Dynamically replace checkpoint model if provided
+            if checkpoint:
+                if ntype == "CheckpointLoaderSimple":
+                    if "widgets_values" in node and len(node["widgets_values"]) > 0:
+                        node["widgets_values"][0] = checkpoint
+                elif ntype == "UNETLoader":
+                    if "widgets_values" in node and len(node["widgets_values"]) > 0:
+                        node["widgets_values"][0] = checkpoint
+
         logger.info(
             "Workflow parameters updated (UI format)",
             extra={
@@ -182,6 +197,7 @@ class ComfyUIAdapter:
                 "steps": steps,
                 "cfg": cfg,
                 "seed": seed,
+                "checkpoint": checkpoint,
             },
         )
         return workflow
@@ -198,6 +214,7 @@ class ComfyUIAdapter:
         seed: int,
         sampler: str,
         scheduler: str,
+        checkpoint: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Update parameters for API-format workflows (e.g. Anima.json).
@@ -231,6 +248,13 @@ class ComfyUIAdapter:
                 inputs["width"] = width
                 inputs["height"] = height
 
+            # Dynamically replace checkpoint model if provided
+            if checkpoint:
+                if class_type == "CheckpointLoaderSimple":
+                    inputs["ckpt_name"] = checkpoint
+                elif class_type == "UNETLoader":
+                    inputs["unet_name"] = checkpoint
+
         logger.info(
             "Workflow parameters updated (API format)",
             extra={
@@ -239,6 +263,7 @@ class ComfyUIAdapter:
                 "steps": steps,
                 "cfg": cfg,
                 "seed": seed,
+                "checkpoint": checkpoint,
             },
         )
         return workflow
@@ -309,7 +334,7 @@ class ComfyUIAdapter:
     # ComfyUI queue
     # ------------------------------------------------------------------
 
-    def queue_prompt(self, workflow: Dict[str, Any]) -> str:
+    async def queue_prompt(self, workflow: Dict[str, Any]) -> str:
         """
         Queue a prompt on the ComfyUI server.
 
@@ -328,33 +353,32 @@ class ComfyUIAdapter:
             api_format = workflow  # already API format
 
         prompt = {"prompt": api_format}
-        data = json.dumps(prompt).encode("utf-8")
 
-        def _do_queue():
-            req = urllib.request.Request(
-                f"http://{self.server_address}/prompt",
-                data=data,
-                headers={"Content-Type": "application/json"},
-            )
-            response = urllib.request.urlopen(req)
-            result = json.loads(response.read())
-            return result["prompt_id"]
+        async def _do_queue():
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"http://{self.server_address}/prompt",
+                    json=prompt,
+                )
+                response.raise_for_status()
+                result = response.json()
+                return result["prompt_id"]
 
         try:
-            prompt_id = retry_sync(_do_queue, max_retries=3, delay=1.0, backoff=2.0)
+            prompt_id = await retry_async(_do_queue, max_retries=3, delay=1.0, backoff=2.0)
 
             logger.info(
                 "Prompt queued successfully", extra={"prompt_id": prompt_id}
             )
             return prompt_id
 
-        except urllib.error.HTTPError as e:
+        except httpx.HTTPStatusError as e:
             logger.error(
                 "ComfyUI API HTTP error",
-                extra={"status_code": e.code, "reason": e.reason},
+                extra={"status_code": e.response.status_code, "reason": e.response.reason_phrase},
                 exc_info=True,
             )
-            raise APIError(f"ComfyUI API error: {e.code} - {e.reason}")
+            raise APIError(f"ComfyUI API error: {e.response.status_code} - {e.response.reason_phrase}")
 
         except Exception as e:
             logger.error(
@@ -392,17 +416,16 @@ class ComfyUIAdapter:
                 raise ImageGenerationError("Image generation timeout")
 
             try:
-                with urllib.request.urlopen(
-                    f"http://{self.server_address}/history/{prompt_id}"
-                ) as resp:
-                    history = json.loads(resp.read())
-
-                if prompt_id in history:
-                    logger.info(
-                        "Image generation completed",
-                        extra={"prompt_id": prompt_id, "elapsed": elapsed},
-                    )
-                    return history[prompt_id]
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.get(f"http://{self.server_address}/history/{prompt_id}")
+                    if resp.status_code == 200:
+                        history = resp.json()
+                        if prompt_id in history:
+                            logger.info(
+                                "Image generation completed",
+                                extra={"prompt_id": prompt_id, "elapsed": elapsed},
+                            )
+                            return history[prompt_id]
 
             except Exception as e:
                 logger.warning(
@@ -412,7 +435,7 @@ class ComfyUIAdapter:
 
             await asyncio.sleep(poll_interval)
 
-    def get_image(
+    async def get_image(
         self, filename: str, subfolder: str, folder_type: str
     ) -> bytes:
         """
@@ -425,16 +448,18 @@ class ComfyUIAdapter:
             ImageGenerationError: If the download fails
         """
         data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
-        url_values = urllib.parse.urlencode(data)
 
-        def _do_download():
-            with urllib.request.urlopen(
-                f"http://{self.server_address}/view?{url_values}"
-            ) as resp:
-                return resp.read()
+        async def _do_download():
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    f"http://{self.server_address}/view",
+                    params=data
+                )
+                resp.raise_for_status()
+                return resp.content
 
         try:
-            image_data = retry_sync(_do_download, max_retries=3, delay=1.0, backoff=2.0)
+            image_data = await retry_async(_do_download, max_retries=3, delay=1.0, backoff=2.0)
 
             logger.info(
                 "Image downloaded successfully",
@@ -465,6 +490,8 @@ class ComfyUIAdapter:
         seed: int,
         sampler: str,
         scheduler: str,
+        workflow_path: Optional[str] = None,
+        checkpoint: Optional[str] = None,
     ) -> Tuple[bytes, Dict[str, Any]]:
         """
         Full image generation pipeline: load → update → queue → poll → download.
@@ -476,7 +503,7 @@ class ComfyUIAdapter:
             ImageGenerationError: On any failure
         """
         try:
-            workflow = self.load_workflow()
+            workflow = self.load_workflow(workflow_path)
             workflow = self.update_workflow_params(
                 workflow,
                 positive_prompt,
@@ -488,9 +515,10 @@ class ComfyUIAdapter:
                 seed,
                 sampler,
                 scheduler,
+                checkpoint,
             )
 
-            prompt_id = self.queue_prompt(workflow)
+            prompt_id = await self.queue_prompt(workflow)
             history = await self.wait_for_completion(prompt_id)
 
             # Find the first SaveImage node output
@@ -504,7 +532,7 @@ class ComfyUIAdapter:
             if not image_info:
                 raise ImageGenerationError("No image found in ComfyUI output")
 
-            image_data = self.get_image(
+            image_data = await self.get_image(
                 image_info["filename"],
                 image_info.get("subfolder", ""),
                 image_info.get("type", "output"),

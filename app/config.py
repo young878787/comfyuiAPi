@@ -1,6 +1,7 @@
 """Application configuration management."""
 
 from typing import Optional
+from pydantic import Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -8,13 +9,42 @@ from pathlib import Path
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    # AI Provider: github | google
-    ai_provider: str = "github"
+    # AI Provider: opencode | google
+    ai_provider: str = "opencode"
 
-    # GitHub Models API
-    github_api_token: str = ""
-    github_api_url: str = "https://models.github.ai/inference/chat/completions"
-    github_model: str = "gpt-4o"
+    # OpenCode API
+    opencode_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("opencode_api_key", "OPENCODE_API_KEY", "OPENCODE_GO_API_KEY")
+    )
+    opencode_api_url: str = Field(
+        default="https://opencode.ai/zen/go/v1/chat/completions",
+        validation_alias=AliasChoices(
+            "opencode_api_url", 
+            "OPENCODE_API_URL", 
+            "OPENCODE_CHAT_COMPLETIONS_URL",
+            "OPENCODE_GO_API_URL",
+            "OPENCODE_GO_CHAT_COMPLETIONS_URL"
+        )
+    )
+    opencode_model: str = Field(
+        default="deepseek-v4-flash",
+        validation_alias=AliasChoices(
+            "opencode_model",
+            "OPENCODE_MODEL",
+            "OPENCODE_TRANSLATION_MODEL",
+            "OPENCODE_GO_MODEL",
+            "OPENCODE_GO_PUNCTUATION_MODEL"
+        )
+    )
+    opencode_thinking: str = Field(
+        default="disabled",
+        validation_alias=AliasChoices(
+            "opencode_thinking",
+            "OPENCODE_THINKING",
+            "OPENCODE_GO_THINKING"
+        )
+    )
 
     # Google AI Studio API
     google_api_key: str = ""

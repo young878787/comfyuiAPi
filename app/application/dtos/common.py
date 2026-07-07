@@ -21,6 +21,8 @@ class GenerateRequest(BaseModel):
     negative_prompt: Optional[str] = Field(default=None)
     image_base64: Optional[str] = Field(default=None, description="Reference image base64")
     image_mime_type: Optional[str] = Field(default="image/jpeg", description="Reference image mime type")
+    checkpoint: Optional[str] = Field(default=None, description="Dynamic checkpoint model name to swap in loader")
+
 
 
 class WorkflowInfo(BaseModel):

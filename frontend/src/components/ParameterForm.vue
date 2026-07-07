@@ -1,6 +1,21 @@
 <template>
   <div class="parameter-form">
     <div class="form-grid">
+      <!-- Checkpoint Model -->
+      <div class="form-group span-2">
+        <label>模型 (Checkpoint)</label>
+        <select
+          v-model="localParams.checkpoint"
+          class="glass-select full-width"
+          @change="emitUpdate"
+        >
+          <option value="">使用工作流預設模型 (Default)</option>
+          <option v-for="ckpt in checkpoints" :key="ckpt" :value="ckpt">
+            {{ ckpt }}
+          </option>
+        </select>
+      </div>
+
       <!-- Resolution -->
       <div class="form-group span-2">
         <label>解析度 (寬 x 高)</label>
@@ -124,7 +139,7 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { reactive, watch, onMounted, ref } from 'vue'
 
 const props = defineProps({
   params: {
@@ -136,6 +151,19 @@ const props = defineProps({
 const emit = defineEmits(['update:params'])
 
 const localParams = reactive({ ...props.params })
+const checkpoints = ref([])
+
+// Fetch available checkpoints from backend ComfyUI proxy on load
+onMounted(async () => {
+  try {
+    const res = await fetch('/api/comfyui/checkpoints')
+    if (res.ok) {
+      checkpoints.value = await res.json()
+    }
+  } catch (err) {
+    console.error('Failed to load ComfyUI checkpoints:', err)
+  }
+})
 
 // Watch for external changes (like changing workflow which changes defaults)
 watch(() => props.params, (newVal) => {
@@ -236,6 +264,11 @@ label {
 .glass-select {
   appearance: none;
   cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255, 255, 255, 0.5)' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  padding-right: 32px !important;
 }
 
 .glass-select option {
@@ -303,5 +336,9 @@ label {
   background: #6c5ce7;
   color: white;
   box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+}
+
+.full-width {
+  width: 100%;
 }
 </style>

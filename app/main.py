@@ -10,6 +10,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.presentation.routes import generate_routes, image_routes, config_routes
 
+
+class EndpointFilter(logging.Filter):
+    """Filter out logs from health checks and connection status polls."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        return "/api/status" not in message and "/health" not in message
+
+
 # Ensure log directory exists
 log_file_path = Path(settings.log_file)
 log_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,6 +94,9 @@ if frontend_dist.exists():
 @app.on_event("startup")
 async def startup_event():
     """Application startup event."""
+    # Filter out status/health check endpoint logs to prevent log pollution
+    logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+
     logger.info("Application starting", extra={
         "host": settings.app_host,
         "port": settings.server_port

@@ -12,6 +12,7 @@ from app.application.dtos.common import (
     ImageListResponse
 )
 from app.application.services.image_service import ImageService
+from app.application.services.metadata_parser import parse_image_metadata
 from app.infrastructure.repositories.image_repository import ImageRepository
 from app.infrastructure.adapters.comfyui_adapter import ComfyUIAdapter
 from app.infrastructure.adapters.ai_adapter_factory import create_ai_adapter
@@ -28,6 +29,18 @@ def get_image_service() -> ImageService:
     image_repository = ImageRepository()
     comfyui_adapter = ComfyUIAdapter()
     return ImageService(image_repository, comfyui_adapter)
+
+
+@router.post("/parse-metadata")
+async def parse_metadata(file: UploadFile = File(...)):
+    """Parse Stable Diffusion and ComfyUI metadata from an uploaded image."""
+    try:
+        contents = await file.read()
+        metadata = parse_image_metadata(contents)
+        return metadata
+    except Exception as e:
+        logger.exception(f"Error parsing image metadata: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/analyze")

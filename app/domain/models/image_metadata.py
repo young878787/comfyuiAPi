@@ -28,6 +28,7 @@ class ImageMetadata:
         ai_model: AI model used for editing
         ai_provider: AI provider used for editing
         workflow_name: Name of the workflow file used
+        checkpoint: Name of the checkpoint model used
     """
     
     filename: str
@@ -47,6 +48,7 @@ class ImageMetadata:
     ai_model: str = ""
     ai_provider: str = ""
     workflow_name: str = ""
+    checkpoint: str = ""
     
     def to_dict(self) -> dict:
         """Convert metadata to dictionary."""
@@ -68,6 +70,7 @@ class ImageMetadata:
             "ai_model": self.ai_model,
             "ai_provider": self.ai_provider,
             "workflow_name": self.workflow_name,
+            "checkpoint": self.checkpoint,
         }
     
     @classmethod
@@ -91,4 +94,5 @@ class ImageMetadata:
             ai_model=data.get("ai_model", ""),
             ai_provider=data.get("ai_provider", ""),
             workflow_name=data.get("workflow_name", ""),
+            checkpoint=data.get("checkpoint", ""),
         )

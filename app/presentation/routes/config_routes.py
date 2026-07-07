@@ -119,3 +119,39 @@ async def get_status():
         "connected": connected,
         "comfyui_url": settings.comfyui_api_url
     }
+
+
+@router.get("/api/comfyui/checkpoints", response_model=List[str])
+async def get_comfyui_checkpoints():
+    """代理 ComfyUI 接口，獲取所有可用的 Checkpoint (及 UNet 擴散模型) 列表"""
+    import asyncio
+    import json
+    
+    folders = ["checkpoints", "diffusion_models", "unet"]
+    
+    def fetch_folder(folder_name):
+        url = f"{settings.comfyui_api_url}/models/{folder_name}"
+        try:
+            with urllib.request.urlopen(url, timeout=1.5) as resp:
+                if resp.status == 200:
+                    return json.loads(resp.read().decode('utf-8'))
+        except Exception:
+            pass
+        return []
+
+    async def get_all():
+        tasks = [asyncio.to_thread(fetch_folder, f) for f in folders]
+        results = await asyncio.gather(*tasks)
+        merged = set()
+        for r in results:
+            if isinstance(r, list):
+                merged.update(r)
+        return sorted(list(merged))
+
+    try:
+        models = await get_all()
+        if not models:
+            models = ["JANIMA_v10.safetensors", "qwen_image_fp8_e4m3fn.safetensors"]
+        return models
+    except Exception:
+        return ["JANIMA_v10.safetensors", "qwen_image_fp8_e4m3fn.safetensors"]

@@ -43,6 +43,7 @@
               :error-message="errorMessage"
               @generate="handleGenerate"
               @analyze-image="handleAnalyzeImage"
+              @apply-parsed-metadata="handleApplyParsedMetadata"
             />
           </div>
 
@@ -109,7 +110,8 @@ const params = ref({
   sampler: 'dpmpp_2m_sde',
   scheduler: 'simple',
   attempts: 1,
-  negative_prompt: ''
+  negative_prompt: '',
+  checkpoint: ''
 })
 
 // Fetch initial configuration
@@ -212,7 +214,8 @@ const handleApplyTemplate = (img) => {
       sampler: img.metadata.sampler,
       scheduler: img.metadata.scheduler,
       negative_prompt: img.metadata.negative_prompt,
-      seed: img.metadata.seed
+      seed: img.metadata.seed,
+      checkpoint: img.metadata.checkpoint || ''
     }
     // Set custom event or notify that prompts should be populated
     // We can also target prompt element directly or broadcast it
@@ -248,6 +251,23 @@ const handleAnalyzeImage = async ({ file, onSuccess, onError }) => {
   }
 }
 
+// Handle applying metadata parsed from PNG images
+const handleApplyParsedMetadata = (parsed) => {
+  if (parsed && parsed.params) {
+    params.value = {
+      ...params.value,
+      width: parsed.params.width || params.value.width,
+      height: parsed.params.height || params.value.height,
+      steps: parsed.params.steps || params.value.steps,
+      cfg: parsed.params.cfg || params.value.cfg,
+      sampler: parsed.params.sampler || params.value.sampler,
+      scheduler: parsed.params.scheduler || params.value.scheduler,
+      negative_prompt: parsed.params.negativePrompt || parsed.params.negative_prompt || params.value.negative_prompt,
+      seed: parsed.params.seed !== undefined ? parsed.params.seed : params.value.seed
+    }
+  }
+}
+
 // Handle Generate Streaming SSE Connection
 const handleGenerate = async (data) => {
   generating.value = true
@@ -269,7 +289,8 @@ const handleGenerate = async (data) => {
       seed: params.value.seed,
       sampler: params.value.sampler,
       scheduler: params.value.scheduler,
-      negative_prompt: params.value.negative_prompt
+      negative_prompt: params.value.negative_prompt,
+      checkpoint: params.value.checkpoint || null
     }
     
     const response = await fetch('/api/generate', {

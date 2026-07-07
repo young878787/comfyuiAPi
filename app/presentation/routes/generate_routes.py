@@ -28,7 +28,7 @@ async def generate(
     """
     Handle POST generate request and stream SSE progress events.
     """
-    generator = await service.generate(request)
+    generator = service.generate(request)
     return StreamingResponse(
         generator,
         media_type="text/event-stream",

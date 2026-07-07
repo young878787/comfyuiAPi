@@ -9,7 +9,7 @@
       <textarea
         id="original-prompt"
         v-model="prompt"
-        placeholder="在此輸入原始提示詞（英文），或者留空讓 AI 根據您的修改想法自由發揮..."
+        placeholder="輸入原始提示詞（英文 tag 或自然語言），Anima 繪師會自動結構化並優化…"
         class="glass-textarea prompt-area"
         rows="5"
         :disabled="generating"
@@ -25,7 +25,7 @@
       <textarea
         id="modification-idea"
         v-model="idea"
-        placeholder="例：『換成藍色水手服』或『在森林背景中，加入柔和微光』。AI 將會幫您優化並改寫提示詞..."
+        placeholder="描述你的創作想法，例：『穿著和服的少女在櫻花樹下微笑，柔和的夕陽光線』"
         class="glass-textarea idea-area"
         rows="4"
         :disabled="generating"
@@ -81,6 +81,31 @@
           >
             🔍 AI 分析圖片
           </button>
+        </div>
+      </div>
+
+      <!-- Metadata Detected Banner -->
+      <div v-if="showMetadataBanner && detectedMetadata" class="metadata-banner glass-card-micro">
+        <div class="banner-header">
+          <span class="banner-title">✨ 偵測到 AI 生成參數 ({{ detectedMetadata.format === 'comfyui' ? 'ComfyUI' : 'Stable Diffusion' }})</span>
+          <span class="close-banner" @click="showMetadataBanner = false">✕</span>
+        </div>
+        <div class="metadata-details">
+          <div class="metadata-prompt-preview" v-if="detectedMetadata.positivePrompt">
+            <strong>正向提示詞：</strong>
+            <p class="truncate-text">{{ detectedMetadata.positivePrompt }}</p>
+          </div>
+          <div class="metadata-params-row" v-if="hasParams(detectedMetadata.params)">
+            <span v-if="detectedMetadata.params.steps">Steps: <strong>{{ detectedMetadata.params.steps }}</strong></span>
+            <span v-if="detectedMetadata.params.cfg">CFG: <strong>{{ detectedMetadata.params.cfg }}</strong></span>
+            <span v-if="detectedMetadata.params.sampler">Sampler: <strong>{{ detectedMetadata.params.sampler }}</strong></span>
+            <span v-if="detectedMetadata.params.seed">Seed: <strong>{{ detectedMetadata.params.seed }}</strong></span>
+            <span v-if="detectedMetadata.params.width && detectedMetadata.params.height">Size: <strong>{{ detectedMetadata.params.width }}x{{ detectedMetadata.params.height }}</strong></span>
+          </div>
+        </div>
+        <div class="banner-actions">
+          <button class="btn-meta-apply" @click.stop="applyMetadata('all')">全部套用</button>
+          <button class="btn-meta-apply-prompt" @click.stop="applyMetadata('prompt')">僅提示詞</button>
         </div>
       </div>
     </div>
@@ -146,7 +171,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['generate', 'analyze-image'])
+const emit = defineEmits(['generate', 'analyze-image', 'apply-parsed-metadata'])
 
 const prompt = ref('')
 const idea = ref('')
@@ -155,6 +180,10 @@ const refImagePreview = ref(null)
 const refImageFile = ref(null)
 const fileInput = ref(null)
 const analyzing = ref(false)
+
+// Metadata state
+const detectedMetadata = ref(null)
+const showMetadataBanner = ref(false)
 
 const clearPrompt = () => { prompt.value = '' }
 const clearIdea = () => { idea.value = '' }
@@ -179,16 +208,103 @@ const handleDrop = (e) => {
 const processFile = (file) => {
   if (!file || !file.type.startsWith('image/')) return
   refImageFile.value = file
+  
+  // 1. Read preview
   const reader = new FileReader()
   reader.onload = (e) => {
     refImagePreview.value = e.target.result
   }
   reader.readAsDataURL(file)
+  
+  // Reset previous metadata
+  detectedMetadata.value = null
+  showMetadataBanner.value = false
+
+  // 2. Read ArrayBuffer for metadata parsing locally
+  const arrayReader = new FileReader()
+  arrayReader.onload = (e) => {
+    try {
+      const arrayBuffer = e.target.result
+      const rawMetadata = parsePngMetadata(arrayBuffer)
+      if (rawMetadata) {
+        const parsed = extractImagePrompt(rawMetadata)
+        if (parsed.format !== 'unknown' && (parsed.positivePrompt || parsed.negativePrompt)) {
+          detectedMetadata.value = parsed
+          showMetadataBanner.value = true
+          return
+        }
+      }
+    } catch (err) {
+      console.error("Local PNG metadata parsing failed, trying backend fallback:", err)
+    }
+    
+    // Fallback: Ask backend to parse metadata (e.g. if WebP or compressed)
+    tryBackendParse(file)
+  }
+  arrayReader.readAsArrayBuffer(file)
+}
+
+const tryBackendParse = async (file) => {
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await fetch('/api/image/parse-metadata', {
+      method: 'POST',
+      body: formData
+    })
+    if (response.ok) {
+      const parsed = await response.json()
+      if (parsed.format !== 'unknown' && (parsed.positive_prompt || parsed.negative_prompt)) {
+        detectedMetadata.value = {
+          format: parsed.format,
+          positivePrompt: parsed.positive_prompt,
+          negativePrompt: parsed.negative_prompt,
+          params: {
+            steps: parsed.parameters?.steps,
+            cfg: parsed.parameters?.cfg,
+            seed: parsed.parameters?.seed,
+            sampler: parsed.parameters?.sampler,
+            scheduler: parsed.parameters?.scheduler,
+            width: parsed.parameters?.width,
+            height: parsed.parameters?.height
+          }
+        }
+        showMetadataBanner.value = true
+      }
+    }
+  } catch (err) {
+    console.error("Backend metadata parsing failed:", err)
+  }
+}
+
+const applyMetadata = (type) => {
+  if (!detectedMetadata.value) return
+  
+  if (type === 'all') {
+    prompt.value = detectedMetadata.value.positivePrompt || ''
+    emit('apply-parsed-metadata', detectedMetadata.value)
+  } else if (type === 'prompt') {
+    prompt.value = detectedMetadata.value.positivePrompt || ''
+    emit('apply-parsed-metadata', {
+      ...detectedMetadata.value,
+      params: {
+        negative_prompt: detectedMetadata.value.negativePrompt
+      }
+    })
+  }
+  showMetadataBanner.value = false
+}
+
+const hasParams = (params) => {
+  if (!params) return false
+  return params.steps || params.cfg || params.sampler || params.seed || (params.width && params.height)
 }
 
 const clearRefImage = () => {
   refImageFile.value = null
   refImagePreview.value = null
+  detectedMetadata.value = null
+  showMetadataBanner.value = false
   if (fileInput.value) fileInput.value.value = ''
 }
 
@@ -215,6 +331,224 @@ const startGeneration = () => {
     idea: idea.value,
     image: refImagePreview.value
   })
+}
+
+// Local binary PNG metadata parser helper
+const parsePngMetadata = (arrayBuffer) => {
+  const view = new DataView(arrayBuffer)
+  // Check PNG signature: 89 50 4E 47 0D 0A 1A 0A
+  if (view.getUint32(0) !== 0x89504E47 || view.getUint32(4) !== 0x0D0A1A0A) {
+    return null
+  }
+  
+  const textChunks = {}
+  let offset = 8
+  const length = arrayBuffer.byteLength
+  
+  while (offset < length - 12) {
+    const chunkLength = view.getUint32(offset)
+    const chunkType = String.fromCharCode(
+      view.getUint8(offset + 4),
+      view.getUint8(offset + 5),
+      view.getUint8(offset + 6),
+      view.getUint8(offset + 7)
+    )
+    
+    offset += 8
+    
+    if (chunkType === 'tEXt') {
+      const chunkData = new Uint8Array(arrayBuffer, offset, chunkLength)
+      let nullIndex = 0
+      while (nullIndex < chunkLength && chunkData[nullIndex] !== 0) {
+        nullIndex++
+      }
+      if (nullIndex < chunkLength) {
+        const key = new TextDecoder('latin1').decode(chunkData.subarray(0, nullIndex))
+        const val = new TextDecoder('latin1').decode(chunkData.subarray(nullIndex + 1))
+        textChunks[key] = val
+      }
+    } else if (chunkType === 'iTXt') {
+      const chunkData = new Uint8Array(arrayBuffer, offset, chunkLength)
+      let nullIndex = 0
+      while (nullIndex < chunkLength && chunkData[nullIndex] !== 0) {
+        nullIndex++
+      }
+      if (nullIndex < chunkLength) {
+        const key = new TextDecoder('utf-8').decode(chunkData.subarray(0, nullIndex))
+        const compressionFlag = chunkData[nullIndex + 1]
+        const compressionMethod = chunkData[nullIndex + 2]
+        
+        let langIndex = nullIndex + 3
+        while (langIndex < chunkLength && chunkData[langIndex] !== 0) {
+          langIndex++
+        }
+        
+        let transKeyIndex = langIndex + 1
+        while (transKeyIndex < chunkLength && chunkData[transKeyIndex] !== 0) {
+          transKeyIndex++
+        }
+        
+        let textBytes = chunkData.subarray(transKeyIndex + 1)
+        if (compressionFlag === 0) {
+          const val = new TextDecoder('utf-8').decode(textBytes)
+          textChunks[key] = val
+        }
+      }
+    }
+    
+    offset += chunkLength + 4
+  }
+  
+  return textChunks
+}
+
+const extractImagePrompt = (metadata) => {
+  const result = {
+    format: 'unknown',
+    positivePrompt: '',
+    negativePrompt: '',
+    params: {}
+  }
+  
+  if (!metadata) return result
+  
+  // 1. ComfyUI Format
+  if (metadata.prompt) {
+    result.format = 'comfyui'
+    try {
+      const promptObj = JSON.parse(metadata.prompt)
+      const positiveTexts = []
+      const negativeTexts = []
+      const samplerNodes = []
+      const clipNodes = {}
+      
+      for (const [nodeId, node] of Object.entries(promptObj)) {
+        const classType = node.class_type || ''
+        if (['CLIPTextEncode', 'SDXLPromptEncoder', 'CLIPTextEncodeSDXL', 'CLIPTextEncodeSVD'].includes(classType)) {
+          clipNodes[nodeId] = node
+        } else if (classType.includes('Sampler') || classType === 'KSampler' || classType === 'KSamplerAdvanced') {
+          samplerNodes.push(node)
+        }
+      }
+      
+      for (const sampler of samplerNodes) {
+        const inputs = sampler.inputs || {}
+        const posConn = inputs.positive
+        const negConn = inputs.negative
+        
+        if (Array.isArray(posConn) && posConn.length > 0) {
+          const posNodeId = String(posConn[0])
+          if (clipNodes[posNodeId]) {
+            const text = clipNodes[posNodeId].inputs?.text || ''
+            if (text && !positiveTexts.includes(text)) {
+              positiveTexts.push(text)
+            }
+          }
+        }
+        
+        if (Array.isArray(negConn) && negConn.length > 0) {
+          const negNodeId = String(negConn[0])
+          if (clipNodes[negNodeId]) {
+            const text = clipNodes[negNodeId].inputs?.text || ''
+            if (text && !negativeTexts.includes(text)) {
+              negativeTexts.push(text)
+            }
+          }
+        }
+      }
+      
+      if (positiveTexts.length === 0) {
+        for (const node of Object.values(clipNodes)) {
+          const text = node.inputs?.text || ''
+          if (text) {
+            const textLower = text.toLowerCase()
+            if (textLower.includes('worst quality') || textLower.includes('low quality') || textLower.includes('bad anatomy')) {
+              negativeTexts.push(text)
+            } else {
+              positiveTexts.push(text)
+            }
+          }
+        }
+      }
+      
+      result.positivePrompt = positiveTexts.join('\n')
+      result.negativePrompt = negativeTexts.join('\n')
+      
+      if (samplerNodes.length > 0) {
+        const sInputs = samplerNodes[0].inputs || {}
+        result.params = {
+          steps: sInputs.steps,
+          cfg: sInputs.cfg,
+          seed: sInputs.seed,
+          sampler: sInputs.sampler_name,
+          scheduler: sInputs.scheduler
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse ComfyUI prompt JSON:', e)
+    }
+  } 
+  // 2. Stable Diffusion Format
+  else if (metadata.parameters) {
+    result.format = 'stable_diffusion'
+    const paramsStr = metadata.parameters
+    const lines = paramsStr.split('\n')
+    
+    const posLines = []
+    const negLines = []
+    let paramLine = ''
+    
+    let inNegative = false
+    for (const line of lines) {
+      const lineTrim = line.trim()
+      if (lineTrim.startsWith('Negative prompt:')) {
+        inNegative = true
+        negLines.push(lineTrim.substring('Negative prompt:'.length).trim())
+      } else if (lineTrim.match(/^(Steps:|Sampler:|CFG scale:|Seed:)/i)) {
+        paramLine = lineTrim
+        inNegative = false
+      } else {
+        if (inNegative) {
+          negLines.push(lineTrim)
+        } else {
+          posLines.push(lineTrim)
+        }
+      }
+    }
+    
+    result.positivePrompt = posLines.join('\n').trim()
+    result.negativePrompt = negLines.join('\n').trim()
+    
+    if (paramLine) {
+      const params = {}
+      const pairs = paramLine.split(',')
+      for (const pair of pairs) {
+        const index = pair.indexOf(':')
+        if (index !== -1) {
+          const k = pair.substring(0, index).trim().toLowerCase()
+          const v = pair.substring(index + 1).trim()
+          params[k] = v
+        }
+      }
+      
+      result.params = {
+        steps: params['steps'] ? parseInt(params['steps']) : undefined,
+        cfg: params['cfg scale'] ? parseFloat(params['cfg scale']) : undefined,
+        seed: params['seed'] ? parseInt(params['seed']) : undefined,
+        sampler: params['sampler'],
+      }
+      
+      if (params['size']) {
+        const sizeMatch = params['size'].match(/^(\d+)x(\d+)$/)
+        if (sizeMatch) {
+          result.params.width = parseInt(sizeMatch[1])
+          result.params.height = parseInt(sizeMatch[2])
+        }
+      }
+    }
+  }
+  
+  return result
 }
 </script>
 
@@ -501,5 +835,143 @@ label {
   border-radius: 3px;
   transition: width 0.4s ease;
   box-shadow: 0 0 8px rgba(108, 92, 231, 0.5);
+}
+
+/* Glassmorphism Metadata Banner styling */
+.glass-card-micro {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.3s ease-out;
+}
+
+.banner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.banner-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #a29bfe;
+}
+
+.close-banner {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-banner:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.metadata-details {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.metadata-prompt-preview p {
+  margin: 4px 0 0 0;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.25);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.truncate-text {
+  max-height: 100px;
+  overflow-y: auto;
+  word-break: break-all;
+  white-space: pre-wrap;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  scrollbar-width: thin;
+}
+
+.truncate-text::-webkit-scrollbar {
+  width: 4px;
+}
+
+.truncate-text::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.metadata-params-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metadata-params-row span {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.metadata-params-row strong {
+  color: #a29bfe;
+  font-weight: 600;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-meta-apply {
+  flex: 1;
+  background: linear-gradient(135deg, #6c5ce7, #8e2de2);
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+}
+
+.btn-meta-apply:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-meta-apply-prompt {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-meta-apply-prompt:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
 }
 </style>

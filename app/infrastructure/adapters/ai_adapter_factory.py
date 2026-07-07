@@ -4,7 +4,7 @@ import logging
 
 from app.config import settings
 from app.infrastructure.adapters.base_ai_adapter import BaseAIAdapter
-from app.infrastructure.adapters.github_model_adapter import GitHubModelAdapter
+from app.infrastructure.adapters.opencode_adapter import OpenCodeAdapter
 from app.infrastructure.adapters.google_ai_adapter import GoogleAIAdapter
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ def create_ai_adapter() -> BaseAIAdapter:
     Create and return the AI adapter for the configured provider.
 
     Reads AI_PROVIDER from settings:
-      "github" -> GitHubModelAdapter
+      "opencode" -> OpenCodeAdapter
       "google" -> GoogleAIAdapter
 
     Returns:
@@ -26,9 +26,9 @@ def create_ai_adapter() -> BaseAIAdapter:
     """
     provider = settings.ai_provider.lower().strip()
 
-    if provider == "github":
-        logger.info("AI provider: GitHub Models (%s)", settings.github_model)
-        return GitHubModelAdapter()
+    if provider in ("opencode", "opencode_go"):
+        logger.info("AI provider: OpenCode (%s)", settings.opencode_model)
+        return OpenCodeAdapter()
 
     if provider == "google":
         logger.info("AI provider: Google AI Studio (%s)", settings.google_model)
@@ -36,5 +36,5 @@ def create_ai_adapter() -> BaseAIAdapter:
 
     raise ValueError(
         f"Unknown AI_PROVIDER '{settings.ai_provider}'. "
-        "Valid options: github, google"
+        "Valid options: opencode, google"
     )

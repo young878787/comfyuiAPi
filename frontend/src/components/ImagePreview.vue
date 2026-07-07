@@ -3,7 +3,7 @@
     <!-- Active Image Area -->
     <div class="active-image-card">
       <div v-if="activeImage" class="active-image-wrapper">
-        <img :src="activeImage.url" alt="Generated Image" class="main-image" />
+        <img :src="activeImage.url" alt="Generated Image" class="main-image" @click="openLightbox" title="點擊放大圖片" />
         
         <div class="image-overlay-actions">
           <a :href="downloadUrl" download class="btn-action-round" title="下載此圖片">
@@ -70,16 +70,102 @@
       </div>
       <div class="metadata-grid">
         <div class="meta-item span-2" v-if="activeImage.metadata.original_prompt">
-          <span class="meta-label">原始提示詞:</span>
-          <span class="meta-val code">{{ activeImage.metadata.original_prompt }}</span>
+          <div class="meta-header-inline">
+            <span class="meta-label">原始提示詞:</span>
+            <div class="meta-actions">
+              <button 
+                class="meta-action-btn" 
+                @click="copyText(activeImage.metadata.original_prompt, 'original')"
+                :title="copiedOriginal ? '已複製！' : '複製原始提示詞'"
+              >
+                <span class="action-icon">
+                  <svg v-if="copiedOriginal" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2ec4b6" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </span>
+                <span class="action-text" :class="{ success: copiedOriginal }">
+                  {{ copiedOriginal ? '已複製！' : '複製' }}
+                </span>
+              </button>
+              
+              <button 
+                v-if="isLongPrompt(activeImage.metadata.original_prompt)"
+                class="meta-action-btn" 
+                @click="isExpandedOriginal = !isExpandedOriginal"
+                :title="isExpandedOriginal ? '收合提示詞' : '展開完整提示詞'"
+              >
+                <span class="action-icon">
+                  <svg v-if="isExpandedOriginal" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                  </svg>
+                  <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+                <span class="action-text">
+                  {{ isExpandedOriginal ? '收合' : '展開' }}
+                </span>
+              </button>
+            </div>
+          </div>
+          <div class="prompt-container" :class="{ expanded: isExpandedOriginal }">
+            <span class="meta-val code">{{ activeImage.metadata.original_prompt }}</span>
+          </div>
         </div>
         <div class="meta-item span-2" v-if="activeImage.metadata.user_idea">
           <span class="meta-label">修改想法 (Idea):</span>
           <span class="meta-val idea">{{ activeImage.metadata.user_idea }}</span>
         </div>
         <div class="meta-item span-2">
-          <span class="meta-label">最終提示詞 (Positive Prompt):</span>
-          <span class="meta-val code final">{{ activeImage.metadata.positive_prompt }}</span>
+          <div class="meta-header-inline">
+            <span class="meta-label">最終提示詞 (Positive Prompt):</span>
+            <div class="meta-actions">
+              <button 
+                class="meta-action-btn" 
+                @click="copyText(activeImage.metadata.positive_prompt, 'positive')"
+                :title="copiedPositive ? '已複製！' : '複製最終提示詞'"
+              >
+                <span class="action-icon">
+                  <svg v-if="copiedPositive" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2ec4b6" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </span>
+                <span class="action-text" :class="{ success: copiedPositive }">
+                  {{ copiedPositive ? '已複製！' : '複製' }}
+                </span>
+              </button>
+              
+              <button 
+                v-if="isLongPrompt(activeImage.metadata.positive_prompt)"
+                class="meta-action-btn" 
+                @click="isExpandedPositive = !isExpandedPositive"
+                :title="isExpandedPositive ? '收合提示詞' : '展開完整提示詞'"
+              >
+                <span class="action-icon">
+                  <svg v-if="isExpandedPositive" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                  </svg>
+                  <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                  </svg>
+                </span>
+                <span class="action-text">
+                  {{ isExpandedPositive ? '收合' : '展開' }}
+                </span>
+              </button>
+            </div>
+          </div>
+          <div class="prompt-container" :class="{ expanded: isExpandedPositive }">
+            <span class="meta-val code final">{{ activeImage.metadata.positive_prompt }}</span>
+          </div>
         </div>
         <div class="meta-item">
           <span class="meta-label">寬度 x 高度:</span>
@@ -111,11 +197,51 @@
         </div>
       </div>
     </div>
+
+    <!-- Lightbox Modal -->
+    <Teleport to="body">
+      <Transition name="lightbox-fade">
+        <div v-if="showLightbox && activeImage" class="lightbox-overlay" @click="showLightbox = false">
+          <div class="lightbox-close-btn" @click="showLightbox = false" title="關閉 (Esc)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </div>
+          
+          <div class="lightbox-content" @click.stop>
+            <div :class="['lightbox-image-wrapper', isZoomed ? 'zoomed' : '']">
+              <img 
+                :src="activeImage.url" 
+                alt="Fullscreen Preview" 
+                :class="['lightbox-image', isZoomed ? 'zoom-out' : 'zoom-in']"
+                @click="toggleZoom" 
+                :title="isZoomed ? '點擊縮小適應螢幕' : '點擊放大至原始尺寸'"
+              />
+            </div>
+            
+            <div class="lightbox-actions-panel">
+              <span class="lightbox-info" v-if="activeImage.metadata">
+                {{ activeImage.metadata.width }} × {{ activeImage.metadata.height }}
+              </span>
+              <a :href="downloadUrl" download class="btn-lightbox-action" title="下載原圖">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                下載原圖
+              </a>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 
 const props = defineProps({
   activeImage: {
@@ -133,6 +259,43 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['select-image', 'apply-template'])
+
+// Lightbox states
+const showLightbox = ref(false)
+const isZoomed = ref(false)
+
+const openLightbox = () => {
+  if (props.activeImage) {
+    showLightbox.value = true
+    isZoomed.value = false
+  }
+}
+
+const toggleZoom = () => {
+  isZoomed.value = !isZoomed.value
+}
+
+// Keyboard shortcuts & overflow body management
+const handleKeyDown = (e) => {
+  if (e.key === 'Escape') {
+    showLightbox.value = false
+  }
+}
+
+watch(showLightbox, (newVal) => {
+  if (newVal) {
+    window.addEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
+  } else {
+    window.removeEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = ''
+  }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+  document.body.style.overflow = ''
+})
 
 const downloadUrl = computed(() => {
   if (!props.activeImage) return '#'
@@ -155,6 +318,36 @@ const useAsTemplate = () => {
     emit('apply-template', props.activeImage)
   }
 }
+
+// Copy & Expand States
+const copiedPositive = ref(false)
+const copiedOriginal = ref(false)
+const isExpandedPositive = ref(false)
+const isExpandedOriginal = ref(false)
+
+const isLongPrompt = (text) => {
+  return text && text.length > 120
+}
+
+const copyText = (text, type) => {
+  if (!text) return
+  navigator.clipboard.writeText(text).then(() => {
+    if (type === 'positive') {
+      copiedPositive.value = true
+      setTimeout(() => { copiedPositive.value = false }, 2000)
+    } else if (type === 'original') {
+      copiedOriginal.value = true
+      setTimeout(() => { copiedOriginal.value = false }, 2000)
+    }
+  }).catch(err => {
+    console.error('Failed to copy: ', err)
+  })
+}
+
+watch(() => props.activeImage, () => {
+  isExpandedPositive.value = false
+  isExpandedOriginal.value = false
+})
 </script>
 
 <style scoped>
@@ -170,8 +363,8 @@ const useAsTemplate = () => {
 
 .active-image-card {
   width: 100%;
-  aspect-ratio: 3 / 4;
-  max-height: 480px;
+  height: 480px;
+  flex-shrink: 0;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
@@ -195,7 +388,13 @@ const useAsTemplate = () => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  transition: transform 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: zoom-in;
+}
+
+.main-image:hover {
+  transform: scale(1.015);
+  filter: brightness(1.05);
 }
 
 .image-overlay-actions {
@@ -411,19 +610,85 @@ const useAsTemplate = () => {
   word-break: break-all;
 }
 
+.meta-header-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.meta-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.meta-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 2px 6px;
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.meta-action-btn:hover {
+  background: rgba(108, 92, 231, 0.15);
+  border-color: rgba(108, 92, 231, 0.35);
+  color: #a29bfe;
+}
+
+.meta-action-btn:active {
+  transform: scale(0.95);
+}
+
+.action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-text {
+  font-size: 0.65rem;
+}
+
+.action-text.success {
+  color: #2ec4b6;
+  font-weight: 600;
+}
+
+.prompt-container {
+  width: 100%;
+}
+
 .meta-val.code {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   font-family: monospace;
   font-size: 0.75rem;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 4px 6px;
   border-radius: 4px;
+  max-height: 80px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  transition: max-height 0.25s ease;
 }
 
 .meta-val.code.final {
-  max-height: 120px;
-  overflow-y: auto;
-  white-space: pre-wrap;
+  max-height: 100px;
+}
+
+.prompt-container.expanded .meta-val.code {
+  max-height: 400px;
 }
 
 .meta-val.idea {
@@ -443,5 +708,152 @@ const useAsTemplate = () => {
 @keyframes pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
+}
+/* Lightbox Styles */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 11, 21, 0.9);
+  backdrop-filter: blur(16px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-close-btn {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10001;
+}
+
+.lightbox-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: scale(1.05);
+}
+
+.lightbox-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.lightbox-image-wrapper {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 20px 0;
+}
+
+.lightbox-image {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), max-width 0.3s ease, max-height 0.3s ease;
+}
+
+.lightbox-image.zoom-in {
+  cursor: zoom-in;
+}
+
+.lightbox-image.zoom-out {
+  cursor: zoom-out;
+}
+
+.lightbox-image-wrapper.zoomed {
+  align-items: flex-start;
+}
+
+.lightbox-image-wrapper.zoomed .lightbox-image {
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+}
+
+.lightbox-actions-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 30px;
+  backdrop-filter: blur(8px);
+  z-index: 10001;
+}
+
+.lightbox-info {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: monospace;
+}
+
+.btn-lightbox-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  background: #6c5ce7;
+  border-radius: 20px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-lightbox-action:hover {
+  background: #5b4cc4;
+  box-shadow: 0 0 12px rgba(108, 92, 231, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Transitions */
+.lightbox-fade-enter-active,
+.lightbox-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.lightbox-fade-enter-from,
+.lightbox-fade-leave-to {
+  opacity: 0;
+}
+
+.lightbox-fade-enter-active .lightbox-image {
+  animation: lightbox-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes lightbox-scale-in {
+  from { transform: scale(0.9); }
+  to { transform: scale(1); }
 }
 </style>

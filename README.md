@@ -1,6 +1,6 @@
 # ComfyUI AI Chat - 角色設計助手
 
-基於 FastAPI + Vue 3 的 AI 角色設計對話與圖片生成系統，支援 GitHub Models / Google AI 多模態對話，並整合 ComfyUI 進行高品質圖片生成。
+基於 FastAPI + Vue 3 的 AI 角色設計對話與圖片生成系統，支援 OpenCode / Google AI 多模態對話，並整合 ComfyUI 進行高品質圖片生成。
 
 ## 功能特色
 
@@ -27,7 +27,7 @@ Vue 3 前端 (Vite 開發伺服器 port 3000，代理 /api → 後端埠號)
 - Python 3.10+
 - Node.js 18+（僅開發/建置時需要）
 - ComfyUI 運行於 `http://127.0.0.1:8188`
-- GitHub Models API Token **或** Google AI API Key
+- OpenCode API Key **或** Google AI API Key
 
 ## 快速開始
 
@@ -58,14 +58,14 @@ cp .env.example .env
 開啟 `.env`，至少填入以下必要項目：
 
 ```ini
-# 選擇 AI 供應商："github" 或 "google"
-AI_PROVIDER=github
+# 選擇 AI 供應商："opencode" 或 "google"
+AI_PROVIDER=opencode
 
 # 後端啟動埠號（你可改成 8002、8010... 避免衝突）
 BACKEND_PORT=8000
 
-# GitHub Models
-GITHUB_API_TOKEN=your_github_token_here
+# OpenCode API
+OPENCODE_API_KEY=your_opencode_api_key_here
 
 # 或 Google AI
 # GOOGLE_API_KEY=your_google_api_key_here
@@ -142,7 +142,7 @@ comfyuiAPi/
 │   │   ├── models/             # 領域模型
 │   │   └── exceptions.py
 │   ├── infrastructure/
-│   │   ├── adapters/           # AI 適配器（GitHub / Google / ComfyUI）
+│   │   ├── adapters/           # AI 適配器（OpenCode / Google / ComfyUI）
 │   │   └── repositories/       # 資料儲存
 │   └── presentation/
 │       └── routes/             # API 路由
@@ -198,8 +198,8 @@ comfyuiAPi/
 
 | 變數 | 說明 | 預設值 |
 |------|------|--------|
-| `AI_PROVIDER` | `github` 或 `google` | `github` |
-| `GITHUB_API_TOKEN` | GitHub Models API Token | — |
+| `AI_PROVIDER` | `opencode` 或 `google` | `opencode` |
+| `OPENCODE_API_KEY` | OpenCode API Key | — |
 | `GOOGLE_API_KEY` | Google AI API Key | — |
 | `PROMPT_TEMPLATE` | `qwen` 或 `anima` | `qwen` |
 | `COMFYUI_API_URL` | ComfyUI 地址 | `http://127.0.0.1:8188` |

@@ -39,20 +39,69 @@ def get_workflow_path(workflow_name: str) -> Path:
     return workflow_dir / f"{workflow_name}.json"
 
 
+def _strip_code_block(text: str) -> str:
+    """Extract content from within a fenced code block, stripping the language identifier line."""
+    text = text.strip()
+    if not text.startswith("```"):
+        return text
+    # Remove opening fence
+    lines = text.split("\n")
+    # First line is ``` or ```text etc — skip it
+    lines = lines[1:]
+    # Remove closing fence if present
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+    return "\n".join(lines).strip()
+
+
+def _clean_prompt_text(text: str) -> str:
+    """Remove stray markdown formatting and trim whitespace."""
+    import re
+    # Remove markdown bold/italic markers
+    text = re.sub(r'\*{1,3}', '', text)
+    # Remove markdown headers
+    text = re.sub(r'^#+\s+', '', text, flags=re.MULTILINE)
+    # Remove lines that are purely Chinese/Japanese explanation (heuristic)
+    cleaned_lines = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            cleaned_lines.append(line)
+            continue
+        # Keep the line if it contains mostly ASCII/English content
+        ascii_ratio = sum(1 for c in stripped if ord(c) < 128) / max(len(stripped), 1)
+        if ascii_ratio > 0.3 or stripped.startswith(('masterpiece', 'best', 'score', 'A ', 'She ', 'He ', 'The ', 'Her ', 'His ')):
+            cleaned_lines.append(line)
+    return "\n".join(cleaned_lines).strip()
+
+
 def extract_final_prompt(response_text: str) -> str:
     """Extract the final prompt block from AI response."""
-    # 1. Check for [FINAL_PROMPT] marker
+    # 1. Check for [FINAL_PROMPT] marker (primary path for Anima Builder)
     if "[FINAL_PROMPT]" in response_text:
         parts = response_text.split("[FINAL_PROMPT]")
         if len(parts) > 1:
-            content = parts[1].strip()
+            content = parts[-1].strip()  # Take the last [FINAL_PROMPT] block
+            # Check for code block within the content
             if "```" in content:
-                inner = content.split("```")[1].strip()
-                lines = inner.split("\n")
-                if lines and (lines[0].strip().isalpha() or not lines[0].strip()):
-                    return "\n".join(lines[1:]).strip()
-                return inner
-            return content
+                # Extract the code block content
+                fence_parts = content.split("```")
+                if len(fence_parts) >= 3:
+                    # Content between first pair of fences
+                    inner = fence_parts[1].strip()
+                    lines = inner.split("\n")
+                    # Skip language identifier line (e.g. 'text', 'plaintext')
+                    if lines and (lines[0].strip().isalpha() or not lines[0].strip()):
+                        return "\n".join(lines[1:]).strip()
+                    return inner
+                elif len(fence_parts) >= 2:
+                    inner = fence_parts[1].strip()
+                    lines = inner.split("\n")
+                    if lines and (lines[0].strip().isalpha() or not lines[0].strip()):
+                        return "\n".join(lines[1:]).strip()
+                    return inner
+            # No code block — clean and return the content directly
+            return _clean_prompt_text(content)
             
     # 2. Look for "正向提示詞" or "positive prompt" block
     lower_text = response_text.lower()
@@ -72,18 +121,25 @@ def extract_final_prompt(response_text: str) -> str:
                     return "\n".join(lines[1:]).strip()
                 return inner
                 
-    # 3. Fallback: Find the first code block
+    # 3. Fallback: Find the last code block (most likely the prompt)
     if "```" in response_text:
         parts = response_text.split("```")
-        if len(parts) > 1:
+        # Take the last code block (if there are multiple, the final one is usually the prompt)
+        if len(parts) >= 3:
+            inner = parts[-2].strip()
+            lines = inner.split("\n")
+            if lines and (lines[0].strip().isalpha() or not lines[0].strip()):
+                return "\n".join(lines[1:]).strip()
+            return inner
+        elif len(parts) > 1:
             inner = parts[1].strip()
             lines = inner.split("\n")
             if lines and (lines[0].strip().isalpha() or not lines[0].strip()):
                 return "\n".join(lines[1:]).strip()
             return inner
             
-    # 4. Ultimate fallback: Return the whole response
-    return response_text.strip()
+    # 4. Ultimate fallback: Clean and return the whole response
+    return _clean_prompt_text(response_text)
 
 
 class GenerateService:
@@ -110,74 +166,52 @@ class GenerateService:
             return
             
         attempts = max(1, min(5, request.attempts or 1))
-        
-        modified_prompts = []
-        ai_model = ""
-        ai_provider = ""
-        
         use_ai = bool(request.idea)
         
-        if use_ai:
-            yield f"data: {json.dumps({'type': 'progress', 'completed': 0, 'total': attempts, 'message': '⏳ AI 修改提示詞中...'})}\n\n"
-            
-            try:
-                if not self.ai_adapter:
-                    self.ai_adapter = create_ai_adapter()
-                    
-                ai_provider = settings.ai_provider
-                ai_model = settings.google_model if ai_provider == "google" else settings.github_model
-                
-                # Fetch template name
-                template_name = "anima" if "anima" in request.workflow.lower() else "qwen"
-                template = get_template(template_name)
-                
-                system_prompt = template.system_prompt
-                
-                if request.prompt:
-                    user_msg = (
-                        f"我希望修改以下正向提示詞：\n{request.prompt}\n\n"
-                        f"我的修改想法 (Idea) 是：\n{request.idea}\n\n"
-                        f"請幫我把這些想法融入提示詞中，並依照設計師規範生成。請特別注意：最後必須在一個獨立的代碼塊中，或者使用 `[FINAL_PROMPT]` 標記輸出最後可用於 ComfyUI 的英文正向提示詞（Positive Prompt），例如：\n[FINAL_PROMPT]\n(英文提示詞內容)"
-                    )
-                else:
-                    user_msg = (
-                        f"我的修改想法 (Idea) 是：\n{request.idea}\n\n"
-                        f"請幫我根據這個想法自由發揮生成完整的提示詞，並依照設計師規範生成。請特別注意：最後必須在一個獨立的代碼塊中，或者使用 `[FINAL_PROMPT]` 標記輸出最後可用於 ComfyUI 的英文正向提示詞（Positive Prompt），例如：\n[FINAL_PROMPT]\n(英文提示詞內容)"
-                    )
-                    
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_msg}
-                ]
-                
-                # Call AI adapter
-                ai_response = await self.ai_adapter.generate_response(messages)
-                extracted_prompt = extract_final_prompt(ai_response)
-                
-                logger.info("AI Prompt generated successfully", extra={"prompt": extracted_prompt})
-                
-                for _ in range(attempts):
-                    modified_prompts.append(extracted_prompt)
-                    
-            except Exception as e:
-                logger.error("AI Prompt generation failed", exc_info=True)
-                yield f"data: {json.dumps({'type': 'error', 'message': f'AI prompt modification failed: {str(e)}'})}\n\n"
-                return
-        else:
-            # Direct prompt mode
-            for _ in range(attempts):
-                modified_prompts.append(request.prompt)
-                
         # Resolve workflow file path
         workflow_path = get_workflow_path(request.workflow)
         if not workflow_path.exists():
             yield f"data: {json.dumps({'type': 'error', 'message': f'Workflow configuration file not found: {workflow_path.name}'})}\n\n"
             return
             
-        # Queue ComfyUI tasks
-        results = {}
-        completed_count = 0
+        ai_model = ""
+        ai_provider = ""
+        messages = []
         
+        if use_ai:
+            try:
+                if not self.ai_adapter:
+                    self.ai_adapter = create_ai_adapter()
+                    
+                ai_provider = settings.ai_provider
+                ai_model = settings.google_model if ai_provider == "google" else settings.opencode_model
+                
+                # Fetch template name
+                template_name = "anima" if "anima" in request.workflow.lower() else "qwen"
+                template = get_template(template_name)
+                system_prompt = template.system_prompt
+                
+                if request.prompt:
+                    user_msg = (
+                        f"原始提示詞：\n{request.prompt}\n\n"
+                        f"想法：\n{request.idea}\n\n"
+                        f"請根據以上原始提示詞與想法，按照規範輸出 [FINAL_PROMPT]。"
+                    )
+                else:
+                    user_msg = (
+                        f"想法：\n{request.idea}\n\n"
+                        f"請根據以上想法，按照規範從零構建完整提示詞並輸出 [FINAL_PROMPT]。"
+                    )
+                    
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg}
+                ]
+            except Exception as e:
+                logger.error("AI Adapter initialization failed", exc_info=True)
+                yield f"data: {json.dumps({'type': 'error', 'message': f'AI prompt modification initialization failed: {str(e)}'})}\n\n"
+                return
+
         seeds = []
         for i in range(attempts):
             if request.seed is not None and i == 0:
@@ -185,18 +219,50 @@ class GenerateService:
             else:
                 seeds.append(random.randint(1, 2**32 - 1))
                 
-        # Launch generation tasks concurrently
-        tasks = []
-        for i in range(attempts):
-            task = asyncio.create_task(
-                self.image_service.generate_image(
-                    positive_prompt=modified_prompts[i],
+        # We use a queue to receive pipeline stage updates and results in real-time
+        event_queue = asyncio.Queue()
+        
+        async def run_pipeline(attempt_num: int, temp: float, seed: int):
+            # Stage 1: AI Prompt Modification
+            if use_ai:
+                await event_queue.put({
+                    "type": "stage_update",
+                    "attempt_num": attempt_num,
+                    "stage": "ai"
+                })
+                try:
+                    logger.info(f"Pipeline {attempt_num}: calling AI with temperature={temp:.2f}")
+                    ai_response = await self.ai_adapter.generate_response(messages, temperature=temp)
+                    extracted_prompt = extract_final_prompt(ai_response)
+                    logger.info(f"Pipeline {attempt_num}: AI Prompt generated successfully: {extracted_prompt[:50]}...")
+                except Exception as e:
+                    logger.error(f"AI Prompt generation failed for pipeline {attempt_num}", exc_info=True)
+                    await event_queue.put({
+                        "type": "error",
+                        "attempt_num": attempt_num,
+                        "message": f"AI prompt modification failed: {str(e)}"
+                    })
+                    return
+            else:
+                extracted_prompt = request.prompt
+
+            # Stage 2: ComfyUI image generation
+            await event_queue.put({
+                "type": "stage_update",
+                "attempt_num": attempt_num,
+                "stage": "comfyui",
+                "prompt": extracted_prompt
+            })
+            
+            try:
+                saved_path, metadata = await self.image_service.generate_image(
+                    positive_prompt=extracted_prompt,
                     negative_prompt=request.negative_prompt or "",
                     width=request.width,
                     height=request.height,
                     steps=request.steps,
                     cfg=request.cfg,
-                    seed=seeds[i],
+                    seed=seed,
                     sampler=request.sampler,
                     scheduler=request.scheduler,
                     original_prompt=request.prompt or "",
@@ -204,42 +270,110 @@ class GenerateService:
                     ai_model=ai_model,
                     ai_provider=ai_provider,
                     workflow_name=request.workflow,
-                    workflow_path=str(workflow_path)
+                    workflow_path=str(workflow_path),
+                    checkpoint=request.checkpoint
                 )
-            )
-            tasks.append((i + 1, task))
-            
-        yield f"data: {json.dumps({'type': 'progress', 'completed': 0, 'total': attempts, 'message': '⏳ ComfyUI 正在生成圖片...'})}\n\n"
-        
-        while completed_count < attempts:
-            await asyncio.sleep(1.5)
-            
-            new_completed = 0
-            for attempt_num, task in tasks:
-                if task.done():
-                    new_completed += 1
-                    if str(attempt_num) not in results:
-                        try:
-                            saved_path, metadata = task.result()
-                            results[str(attempt_num)] = {
-                                "attempt_num": attempt_num,
-                                "modified_prompt": modified_prompts[attempt_num - 1],
-                                "saved_paths": [saved_path],
-                                "ai_metadata": {"model": ai_model, "provider": ai_provider} if use_ai else None,
-                                "note": f"Seed: {metadata.seed}"
-                            }
-                        except Exception as e:
-                            logger.error(f"ComfyUI attempt {attempt_num} failed", exc_info=True)
-                            results[str(attempt_num)] = {
-                                "attempt_num": attempt_num,
-                                "error": str(e)
-                            }
-                            
-            if new_completed > completed_count:
-                completed_count = new_completed
-                yield f"data: {json.dumps({'type': 'progress', 'completed': completed_count, 'total': attempts, 'message': f'⏳ 已生成 {completed_count}/{attempts} 張圖片...'})}\n\n"
+                await event_queue.put({
+                    "type": "success",
+                    "attempt_num": attempt_num,
+                    "saved_path": saved_path,
+                    "metadata": metadata,
+                    "prompt": extracted_prompt
+                })
+            except Exception as e:
+                logger.error(f"ComfyUI pipeline {attempt_num} failed", exc_info=True)
+                await event_queue.put({
+                    "type": "failure",
+                    "attempt_num": attempt_num,
+                    "error": str(e)
+                })
+
+        # Launch all pipelines concurrently
+        for i in range(attempts):
+            # Linearly scale temperature between 0.4 and 1.0
+            if attempts > 1:
+                temp = 0.4 + i * (1.0 - 0.4) / (attempts - 1)
             else:
-                yield f"data: {json.dumps({'type': 'heartbeat', 'completed': completed_count, 'total': attempts, 'message': '⏳ 生成中...'})}\n\n"
+                temp = 0.7
+            
+            seed = seeds[i]
+            asyncio.create_task(run_pipeline(i + 1, temp, seed))
+
+        # State tracking
+        stages = {i: "pending" for i in range(1, attempts + 1)}
+        results = {}
+        completed_count = 0
+
+        def make_status_message() -> str:
+            ai_count = sum(1 for s in stages.values() if s == "ai")
+            cui_count = sum(1 for s in stages.values() if s == "comfyui")
+            done_count = sum(1 for s in stages.values() if s == "done")
+            failed_count = sum(1 for s in stages.values() if s == "failed")
+            
+            parts = []
+            if ai_count > 0:
+                parts.append(f"AI 優化中 ({ai_count})")
+            if cui_count > 0:
+                parts.append(f"ComfyUI 繪圖中 ({cui_count})")
+            if done_count > 0:
+                parts.append(f"已完成 {done_count}")
+            if failed_count > 0:
+                parts.append(f"失敗 {failed_count}")
                 
+            return "⏳ " + " | ".join(parts) if parts else "⏳ 初始化任務..."
+
+        # Initial progress message
+        yield f"data: {json.dumps({'type': 'progress', 'completed': 0, 'total': attempts, 'message': make_status_message()})}\n\n"
+
+        while completed_count < attempts:
+            try:
+                # Wait for next event or trigger heartbeat to keep SSE connection alive
+                event = await asyncio.wait_for(event_queue.get(), timeout=1.5)
+            except asyncio.TimeoutError:
+                yield f"data: {json.dumps({'type': 'heartbeat', 'completed': completed_count, 'total': attempts, 'message': make_status_message()})}\n\n"
+                continue
+
+            num = event["attempt_num"]
+            etype = event["type"]
+
+            if etype == "stage_update":
+                stages[num] = event["stage"]
+                yield f"data: {json.dumps({'type': 'progress', 'completed': completed_count, 'total': attempts, 'message': make_status_message()})}\n\n"
+            
+            elif etype == "error":
+                stages[num] = "failed"
+                completed_count += 1
+                results[str(num)] = {
+                    "attempt_num": num,
+                    "error": event["message"]
+                }
+                yield f"data: {json.dumps({'type': 'progress', 'completed': completed_count, 'total': attempts, 'message': make_status_message()})}\n\n"
+
+            elif etype == "success":
+                stages[num] = "done"
+                completed_count += 1
+                metadata = event["metadata"]
+                results[str(num)] = {
+                    "attempt_num": num,
+                    "modified_prompt": event["prompt"],
+                    "saved_paths": [event["saved_path"]],
+                    "ai_metadata": {"model": ai_model, "provider": ai_provider} if use_ai else None,
+                    "note": f"Seed: {metadata.seed}"
+                }
+                yield f"data: {json.dumps({'type': 'progress', 'completed': completed_count, 'total': attempts, 'message': make_status_message()})}\n\n"
+
+            elif etype == "failure":
+                stages[num] = "failed"
+                completed_count += 1
+                results[str(num)] = {
+                    "attempt_num": num,
+                    "error": event["error"]
+                }
+                yield f"data: {json.dumps({'type': 'progress', 'completed': completed_count, 'total': attempts, 'message': make_status_message()})}\n\n"
+
         # Final completed event
         yield f"data: {json.dumps({'type': 'done', 'results': results})}\n\n"
+
+
+
+
