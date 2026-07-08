@@ -54,6 +54,7 @@ class ImageListResponse(BaseModel):
     date: str
     images: List[str]
     latest_image: Optional[str] = None
+    images_details: Optional[List[ImageResponse]] = None
 
 
 class OpenFolderRequest(BaseModel):

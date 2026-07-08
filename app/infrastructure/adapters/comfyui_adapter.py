@@ -24,7 +24,7 @@ class ComfyUIAdapter:
         """Initialize the adapter with configuration."""
         self.server_address = settings.comfyui_api_url.replace("http://", "")
         self.workflow_path = settings.workflow_path
-        self.timeout = 300  # 5 minutes
+        self.timeout = 600  # 10 minutes
 
     # ------------------------------------------------------------------
     # Workflow loading
@@ -274,9 +274,14 @@ class ComfyUIAdapter:
 
             if class_type == "CLIPTextEncode":
                 title_lower = meta_title.lower()
-                if "positive" in title_lower:
+                # Only inject text directly when CLIPTextEncode is NOT
+                # linked to an upstream source node (which was already
+                # updated above).  Overwriting a link reference with a
+                # plain string breaks the node connection for workflows
+                # like Anima-放大 that use PrimitiveStringMultiline.
+                if "positive" in title_lower and pos_source_id is None:
                     inputs["text"] = positive_prompt
-                elif "negative" in title_lower:
+                elif "negative" in title_lower and neg_source_id is None:
                     inputs["text"] = negative_prompt
 
             elif class_type == "KSampler":
@@ -604,16 +609,38 @@ class ComfyUIAdapter:
             prompt_id = await self.queue_prompt(workflow)
             history = await self.wait_for_completion(prompt_id)
 
-            # Find the first SaveImage node output
+            # Find the first image output — supports both standard
+            # SaveImage nodes and third-party nodes like Image Saver
+            # that nest their output under a "ui" key.
             outputs = history.get("outputs", {})
             image_info = None
             for node_output in outputs.values():
+                if not isinstance(node_output, dict):
+                    continue
+                # Standard SaveImage format: {"images": [...]}
                 if "images" in node_output:
                     image_info = node_output["images"][0]
                     break
+                # Image Saver / custom node format: {"ui": {"images": [...]}}
+                ui_data = node_output.get("ui")
+                if isinstance(ui_data, dict) and "images" in ui_data:
+                    image_info = ui_data["images"][0]
+                    break
 
             if not image_info:
-                raise ImageGenerationError("No image found in ComfyUI output")
+                # Log full output keys to aid future debugging
+                output_summary = {
+                    nid: list(v.keys()) if isinstance(v, dict) else type(v).__name__
+                    for nid, v in outputs.items()
+                }
+                logger.error(
+                    "No image found in ComfyUI output",
+                    extra={"prompt_id": prompt_id, "output_keys": str(output_summary)},
+                )
+                raise ImageGenerationError(
+                    f"No image found in ComfyUI output. "
+                    f"Available output keys: {output_summary}"
+                )
 
             image_data = await self.get_image(
                 image_info["filename"],

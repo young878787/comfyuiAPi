@@ -161,7 +161,9 @@ class GenerateService:
             str: SSE formatted text chunk (data: {json}\n\n)
         """
         # Validate request parameters
-        if not request.prompt and not request.idea:
+        # For text-to-image, prompt or idea must be provided.
+        # For image-to-image/upscale, they can both be empty.
+        if not request.prompt and not request.idea and not request.image_base64:
             yield f"data: {json.dumps({'type': 'error', 'message': 'Prompt and Idea cannot both be empty.'})}\n\n"
             return
             
@@ -225,7 +227,6 @@ class GenerateService:
             try:
                 import base64
                 import time
-                import random
                 
                 # Determine extension
                 ext = "png"
@@ -272,7 +273,7 @@ class GenerateService:
                     })
                     return
             else:
-                extracted_prompt = request.prompt
+                extracted_prompt = request.prompt or ""
 
             # Stage 2: ComfyUI image generation
             await event_queue.put({

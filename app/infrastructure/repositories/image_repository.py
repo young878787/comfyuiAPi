@@ -30,6 +30,10 @@ class ImageRepository:
         path.mkdir(parents=True, exist_ok=True)
         return path
     
+    def get_image_path(self, date_str: str, filename: str) -> Path:
+        """Get absolute path of an image file."""
+        return self.storage_path / date_str / filename
+    
     def _get_next_image_number(self, date_str: str) -> int:
         """Get next available image number (sequence)."""
         date_path = self._get_date_path(date_str)
@@ -140,7 +144,7 @@ ComfyUI 圖片生成參數記錄
             
             logger.info("Image saved successfully", extra={
                 "date": date_str,
-                "filename": filename,
+                "file_name": filename,
                 "bytes": len(image_data)
             })
             
@@ -178,7 +182,7 @@ ComfyUI 圖片生成參數記錄
         except Exception as e:
             logger.error("Failed to read image", extra={
                 "date": date_str,
-                "filename": filename,
+                "file_name": filename,
                 "error": str(e)
             }, exc_info=True)
             raise
@@ -211,7 +215,7 @@ ComfyUI 圖片生成參數記錄
         except Exception as e:
             logger.warning("Failed to read metadata", extra={
                 "date": date_str,
-                "filename": filename,
+                "file_name": filename,
                 "error": str(e)
             })
             return None
@@ -288,13 +292,13 @@ ComfyUI 圖片生成參數記錄
                 
             logger.info("Image files deleted successfully", extra={
                 "date": date_str,
-                "filename": filename
+                "file_name": filename
             })
             
         except Exception as e:
             logger.error("Failed to delete image files", extra={
                 "date": date_str,
-                "filename": filename,
+                "file_name": filename,
                 "error": str(e)
             }, exc_info=True)
             raise

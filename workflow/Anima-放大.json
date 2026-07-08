@@ -51,8 +51,8 @@
   "121": {
     "inputs": {
       "filename": "%time",
-      "path": "AnimaUpscaled/%date:yyyy-MM-dd%/",
-      "extension": "webp",
+      "path": "AnimaUpscaled/%date/",
+      "extension": "png",
       "steps": [
         "173",
         1

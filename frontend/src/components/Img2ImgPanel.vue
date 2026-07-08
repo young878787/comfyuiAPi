@@ -400,7 +400,12 @@ const runSingleGeneration = (imgObj, reqBody) => {
                 imgObj.progress = percent
                 activeProgress.value = percent
               } else if (event.type === 'error') {
-                throw new Error(event.message)
+                reject(new Error(event.message || '生成失敗'))
+                return
+              } else if (event.type === 'failure') {
+                // Backend sends 'failure' when ComfyUI pipeline errors
+                reject(new Error(event.error || '圖片生成失敗'))
+                return
               } else if (event.type === 'done') {
                 imgObj.progress = 100
                 activeProgress.value = 100
@@ -410,12 +415,14 @@ const runSingleGeneration = (imgObj, reqBody) => {
                 resolve()
                 return
               }
-            } catch (err) {
-              console.error('Error parsing SSE event:', err)
+            } catch (parseErr) {
+              console.error('Error parsing SSE event:', parseErr)
             }
           }
         }
       }
+      // SSE stream ended without a 'done' event
+      reject(new Error('SSE 連線已關閉但未收到完成事件'))
     } catch (err) {
       reject(err)
     }

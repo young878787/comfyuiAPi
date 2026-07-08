@@ -149,6 +149,10 @@ class ImageService:
         """Get image binary data by date and filename."""
         return await self.image_repository.get_image(date_str, filename)
     
+    def get_image_path(self, date_str: str, filename: str):
+        """Get image file path by date and filename."""
+        return self.image_repository.get_image_path(date_str, filename)
+    
     async def get_image_metadata(self, date_str: str, filename: str) -> ImageMetadata:
         """Get image metadata by date and filename."""
         return await self.image_repository.get_image_metadata(date_str, filename)

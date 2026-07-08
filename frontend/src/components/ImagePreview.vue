@@ -28,8 +28,12 @@
       <div v-else-if="generating" class="generating-placeholder">
         <div class="glow-ring">
           <div class="spinner"></div>
+          <span class="spinner-percent" v-if="progressPercentage > 0">{{ progressPercentage }}%</span>
         </div>
-        <p class="pulse-text">AI 正在精心繪製您的創作中...</p>
+        <p class="pulse-text">{{ progressMessage || 'AI 正在精心繪製您的創作中...' }}</p>
+        <div class="progress-bar-container" v-if="progressPercentage > 0">
+          <div class="progress-bar-fill" :style="{ width: progressPercentage + '%' }"></div>
+        </div>
         <span class="sub-text">ComfyUI 排程渲染中，請稍候</span>
       </div>
       
@@ -70,6 +74,16 @@
           <line x1="16" y1="17" x2="8" y2="17"/>
         </svg>
         <span>套用參數</span>
+      </button>
+      <div class="toolbar-divider"></div>
+      <button @click="deleteCurrentImage" class="toolbar-btn delete-btn" title="刪除此圖片與參數記錄">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff7675" stroke-width="2.5">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          <line x1="10" y1="11" x2="10" y2="17"></line>
+          <line x1="14" y1="11" x2="14" y2="17"></line>
+        </svg>
+        <span>刪除圖片</span>
       </button>
     </div>
 
@@ -284,10 +298,18 @@ const props = defineProps({
   generating: {
     type: Boolean,
     default: false
+  },
+  progressPercentage: {
+    type: Number,
+    default: 0
+  },
+  progressMessage: {
+    type: String,
+    default: ''
   }
 })
 
-const emit = defineEmits(['select-image', 'apply-template'])
+const emit = defineEmits(['select-image', 'apply-template', 'delete-image'])
 
 // Lightbox states
 const showLightbox = ref(false)
@@ -403,6 +425,14 @@ const copyText = (text, type) => {
   }).catch(err => {
     console.error('Failed to copy: ', err)
   })
+}
+
+const deleteCurrentImage = () => {
+  if (props.activeImage) {
+    if (confirm('確定要永久刪除此張圖片以及對應的參數記錄檔 (.json / .txt) 嗎？此動作無法復原。')) {
+      emit('delete-image', props.activeImage)
+    }
+  }
 }
 
 watch(() => props.activeImage, () => {
@@ -962,5 +992,34 @@ watch(() => props.activeImage, () => {
   width: 1px;
   height: 20px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.spinner-percent {
+  position: absolute;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #a29bfe;
+  z-index: 10;
+}
+
+.progress-bar-container {
+  width: 240px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+  border-radius: 3px;
+  transition: width 0.3s ease-out;
+}
+
+.toolbar-btn.delete-btn:hover {
+  background: rgba(231, 76, 60, 0.15);
+  color: #ff7675;
 }
 </style>

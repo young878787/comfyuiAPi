@@ -16,8 +16,8 @@
         </select>
       </div>
 
-      <!-- Resolution -->
-      <div class="form-group span-2">
+      <!-- Resolution (hidden in img2img mode) -->
+      <div v-if="!hideResolution" class="form-group span-2">
         <label>解析度 (寬 x 高)</label>
         <div class="resolution-inputs">
           <input
@@ -145,6 +145,10 @@ const props = defineProps({
   params: {
     type: Object,
     required: true
+  },
+  hideResolution: {
+    type: Boolean,
+    default: false
   }
 })
 

@@ -73,7 +73,7 @@
               </svg>
             </div>
             <div class="collapsible-content" v-show="showParams">
-              <ParameterForm v-model:params="params" />
+              <ParameterForm v-model:params="params" :hide-resolution="activeTab === 'img2img'" />
             </div>
           </div>
         </div>
@@ -85,8 +85,11 @@
           :active-image="activeImage"
           :history="history"
           :generating="generating"
+          :progress-percentage="progressPercentage"
+          :progress-message="progressMessage"
           @select-image="handleSelectImage"
           @apply-template="handleApplyTemplate"
+          @delete-image="handleDeleteImage"
         />
       </section>
     </main>
@@ -202,9 +205,18 @@ const loadHistory = async () => {
     const res = await fetch(`/api/image/list/${todayStr}`)
     if (res.ok) {
       const data = await res.json()
-      const loadedHistory = []
       
-      // Fetch metadata for each image in history
+      if (data.images_details && data.images_details.length > 0) {
+        history.value = data.images_details
+        const stillExists = activeImage.value && data.images_details.some(img => img.filename === activeImage.value.filename)
+        if (!stillExists) {
+          activeImage.value = data.images_details[data.images_details.length - 1]
+        }
+        return
+      }
+      
+      // Fallback in case backend details list is empty or fails
+      const loadedHistory = []
       for (const filename of data.images) {
         try {
           const metaRes = await fetch(`/api/image/metadata/${todayStr}/${filename}`)
@@ -229,7 +241,12 @@ const loadHistory = async () => {
       
       history.value = loadedHistory
       if (loadedHistory.length > 0) {
-        activeImage.value = loadedHistory[loadedHistory.length - 1]
+        const stillExists = activeImage.value && loadedHistory.some(img => img.filename === activeImage.value.filename)
+        if (!stillExists) {
+          activeImage.value = loadedHistory[loadedHistory.length - 1]
+        }
+      } else {
+        activeImage.value = null
       }
     }
   } catch (err) {
@@ -240,6 +257,46 @@ const loadHistory = async () => {
 // Select history image
 const handleSelectImage = (img) => {
   activeImage.value = img
+}
+
+// Delete image from history and disk
+const handleDeleteImage = async (img) => {
+  if (!img) return
+  // Extract date from URL path (e.g. /api/image/view/2026-07-07/001.png)
+  const parts = img.url.split('/')
+  if (parts.length >= 3) {
+    const dateStr = parts[parts.length - 2]
+    const filename = parts[parts.length - 1]
+    
+    try {
+      const res = await fetch(`/api/image/${dateStr}/${filename}`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        // Remove from local history array
+        const idx = history.value.findIndex(item => item.filename === filename)
+        if (idx !== -1) {
+          history.value.splice(idx, 1)
+        }
+        
+        // Update active image selection
+        if (activeImage.value && activeImage.value.filename === filename) {
+          if (history.value.length > 0) {
+            // Select the neighboring image
+            const nextActiveIdx = Math.min(idx, history.value.length - 1)
+            activeImage.value = history.value[nextActiveIdx]
+          } else {
+            activeImage.value = null
+          }
+        }
+      } else {
+        const errorData = await res.json()
+        alert('刪除圖片失敗: ' + (errorData.detail || '未知錯誤'))
+      }
+    } catch (err) {
+      alert('無法連線到伺服器進行刪除: ' + err.message)
+    }
+  }
 }
 
 // Apply selected history template back into editor

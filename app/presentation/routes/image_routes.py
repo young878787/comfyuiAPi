@@ -1,7 +1,7 @@
 """Image generation and management routes."""
 
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from typing import List, Optional
 import io
 import base64
@@ -82,10 +82,13 @@ async def view_image(
 ):
     """View an image."""
     try:
-        image_data = await service.get_image(date_str, filename)
-        return StreamingResponse(
-            io.BytesIO(image_data),
-            media_type="image/png"
+        image_path = service.get_image_path(date_str, filename)
+        if not image_path.exists():
+            raise ImageNotFoundError(f"Image not found: {date_str}/{filename}")
+        return FileResponse(
+            image_path,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=31536000, immutable"}
         )
     except ImageNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -101,13 +104,14 @@ async def download_image(
 ):
     """Download an image."""
     try:
-        image_data = await service.get_image(date_str, filename)
-        return StreamingResponse(
-            io.BytesIO(image_data),
+        image_path = service.get_image_path(date_str, filename)
+        if not image_path.exists():
+            raise ImageNotFoundError(f"Image not found: {date_str}/{filename}")
+        return FileResponse(
+            image_path,
             media_type="image/png",
-            headers={
-                "Content-Disposition": f"attachment; filename={filename}"
-            }
+            filename=filename,
+            headers={"Cache-Control": "public, max-age=31536000, immutable"}
         )
     except ImageNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -125,10 +129,24 @@ async def list_images(
         images = await service.list_images(date_str)
         latest = await service.get_latest_image(date_str)
         
+        # Build image details list to speed up frontend loading
+        images_details = []
+        for filename in images:
+            metadata = await service.get_image_metadata(date_str, filename)
+            meta_dict = metadata.to_dict() if metadata else {}
+            images_details.append(
+                ImageResponse(
+                    filename=filename,
+                    url=f"/api/image/view/{date_str}/{filename}",
+                    metadata=meta_dict
+                )
+            )
+        
         return ImageListResponse(
             date=date_str,
             images=images,
-            latest_image=latest
+            latest_image=latest,
+            images_details=images_details
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -257,5 +275,22 @@ async def open_folder(
         raise
     except Exception as e:
         logger.exception(f"Failed to open folder: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{date_str}/{filename}")
+async def delete_image(
+    date_str: str,
+    filename: str,
+    service: ImageService = Depends(get_image_service)
+):
+    """Delete an image and its corresponding metadata/logs."""
+    try:
+        await service.image_repository.delete_image(date_str, filename)
+        return {"success": True, "message": f"Image {filename} deleted successfully"}
+    except ImageNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Failed to delete image: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
