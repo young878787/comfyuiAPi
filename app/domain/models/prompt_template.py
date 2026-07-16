@@ -315,7 +315,5 @@ def get_template(name: str) -> PromptTemplate:
     template = _TEMPLATES.get(key)
     if template is None:
         available = ", ".join(_TEMPLATES.keys())
-        raise ValueError(
-            f"Unknown prompt template '{name}'. Available: {available}"
-        )
+        raise ValueError(f"Unknown prompt template '{name}'. Available: {available}")
     return template

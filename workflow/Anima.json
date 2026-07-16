@@ -17,7 +17,7 @@
   },
   "11": {
     "inputs": {
-      "text": "masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, nahida, genshin impact, white hair, short hair, green eyes, blush, mischievous smile, looking at viewer, sleeveless nightgown, white panties, sitting on bed, hugging knees, legs apart, underwear visible, front view, bedroom, morning, sunlight through window, messy bed sheets, soft morning light, warm atmosphere, anime coloring.\n\nA charming anime illustration of Nahida sitting on a messy bed in a cozy bedroom during the morning. She hugs her knees with a mischievous smile and blushing cheeks, looking directly at the viewer with playful eyes. She wears a loose sleeveless nightgown that reveals her white panties as she sits with her legs slightly apart. Soft morning sunlight streams through the window, illuminating the scene with a warm and intimate atmosphere.",
+      "text": "masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, uruha rushia, hololive, green hair, short hair, flat chest, double bun, skull hair ornament, hair_flower, grey loungewear, casual clothes, loose shorts, comfortable fabric, sitting, on sofa, couch, hands resting limply, arms at sides, dull eyes, blank stare, staring at viewer, vacant expression, indoors, living room, home interior, cozy room, soft indoor lighting, warm ambient light, anime coloring.\n\nA cozy anime illustration of Uruha Rushia sitting on a sofa in a living room. She stares directly at the viewer with a vacant, blank expression, her eyes dull and unfocused. Dressed in comfortable grey loungewear and loose shorts, she sits with her hands resting limply at her sides, conveying a sense of complete lethargy. Soft indoor lighting fills the home interior, creating a quiet and stagnant atmosphere.",
       "clip": [
         "45",
         0
@@ -52,10 +52,10 @@
   },
   "19": {
     "inputs": {
-      "seed": 979344551553546,
+      "seed": 694331734267642,
       "steps": 30,
       "cfg": 4,
-      "sampler_name": "dpmpp_2m_sde",
+      "sampler_name": "dpmpp_2m_sde_gpu",
       "scheduler": "simple",
       "denoise": 1,
       "model": [
@@ -93,7 +93,7 @@
   },
   "44": {
     "inputs": {
-      "unet_name": "JANIMA_v10.safetensors",
+      "unet_name": "novaAnimeAM_v30.safetensors",
       "weight_dtype": "default"
     },
     "class_type": "UNETLoader",
@@ -114,7 +114,7 @@
   },
   "46": {
     "inputs": {
-      "filename_prefix": "Anima/2026-07-07/Anima",
+      "filename_prefix": "Anima/%date:yyyy-MM-dd%/%date:yyyy-MM-dd%",
       "images": [
         "8",
         0

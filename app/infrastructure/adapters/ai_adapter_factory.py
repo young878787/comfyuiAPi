@@ -34,7 +34,4 @@ def create_ai_adapter() -> BaseAIAdapter:
         logger.info("AI provider: Google AI Studio (%s)", settings.google_model)
         return GoogleAIAdapter()
 
-    raise ValueError(
-        f"Unknown AI_PROVIDER '{settings.ai_provider}'. "
-        "Valid options: opencode, google"
-    )
+    raise ValueError(f"Unknown AI_PROVIDER '{settings.ai_provider}'. Valid options: opencode, google")

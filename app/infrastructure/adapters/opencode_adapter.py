@@ -43,10 +43,7 @@ class OpenCodeAdapter(BaseAIAdapter):
         Raises:
             APIError: If API call fails
         """
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
         payload = {
             "messages": messages,
@@ -61,30 +58,26 @@ class OpenCodeAdapter(BaseAIAdapter):
 
         async def _do_generate():
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    self.api_url,
-                    headers=headers,
-                    json=payload
-                )
+                response = await client.post(self.api_url, headers=headers, json=payload)
                 response.raise_for_status()
                 data = response.json()
-                
+
                 try:
                     choice = data["choices"][0]
                     message = choice["message"]
                 except (KeyError, IndexError, TypeError) as exc:
                     raise APIError("OpenCode returned unexpected response shape") from exc
-                
+
                 # Check for content, and handle fallback logic similar to the sample
                 content = message.get("content")
                 if content and str(content).strip():
                     return str(content)
-                
+
                 # Fallback to reasoning_content
                 reasoning_content = message.get("reasoning_content")
                 if reasoning_content and str(reasoning_content).strip():
                     return str(reasoning_content)
-                
+
                 # Fallback to reasoning
                 reasoning = message.get("reasoning")
                 if reasoning:
@@ -92,6 +85,7 @@ class OpenCodeAdapter(BaseAIAdapter):
                         return reasoning
                     elif not isinstance(reasoning, str):
                         import json
+
                         reasoning_str = json.dumps(reasoning, ensure_ascii=False)
                         if reasoning_str.strip():
                             return reasoning_str
@@ -101,24 +95,18 @@ class OpenCodeAdapter(BaseAIAdapter):
                 raise APIError("OpenCode response content is empty")
 
         try:
-            logger.info("Calling OpenCode API", extra={
-                "model": self.model,
-                "message_count": len(messages)
-            })
+            logger.info("Calling OpenCode API", extra={"model": self.model, "message_count": len(messages)})
 
             content = await retry_async(_do_generate, max_retries=3, delay=1.0, backoff=2.0)
 
-            logger.info("OpenCode API call successful", extra={
-                "response_length": len(content)
-            })
+            logger.info("OpenCode API call successful", extra={"response_length": len(content)})
 
             return content
 
         except httpx.HTTPStatusError as e:
-            logger.error("OpenCode API HTTP error", extra={
-                "status_code": e.response.status_code,
-                "error": str(e)
-            }, exc_info=True)
+            logger.error(
+                "OpenCode API HTTP error", extra={"status_code": e.response.status_code, "error": str(e)}, exc_info=True
+            )
             raise APIError(f"OpenCode API error: {e.response.status_code}")
 
         except httpx.TimeoutException:
@@ -128,7 +116,5 @@ class OpenCodeAdapter(BaseAIAdapter):
         except Exception as e:
             if isinstance(e, APIError):
                 raise
-            logger.error("OpenCode API unexpected error", extra={
-                "error": str(e)
-            }, exc_info=True)
+            logger.error("OpenCode API unexpected error", extra={"error": str(e)}, exc_info=True)
             raise APIError(f"OpenCode API error: {str(e)}")

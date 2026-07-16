@@ -7,6 +7,7 @@ from datetime import datetime
 
 class GenerateRequest(BaseModel):
     """Request options for Prompt editor AI and ComfyUI generation."""
+
     prompt: Optional[str] = Field(default=None, description="Original positive prompt")
     idea: Optional[str] = Field(default=None, description="Modification idea or prompt expansion")
     attempts: Optional[int] = Field(default=1, ge=1, le=5, description="Number of image generation attempts")
@@ -15,7 +16,7 @@ class GenerateRequest(BaseModel):
     height: Optional[int] = Field(default=None, ge=256, le=2048)
     steps: Optional[int] = Field(default=None, ge=1, le=100)
     cfg: Optional[float] = Field(default=None, ge=0.1, le=30.0)
-    seed: Optional[int] = Field(default=None, ge=0, le=2**32-1)
+    seed: Optional[int] = Field(default=None, ge=0, le=2**32 - 1)
     sampler: Optional[str] = Field(default=None)
     scheduler: Optional[str] = Field(default=None)
     negative_prompt: Optional[str] = Field(default=None)
@@ -24,9 +25,9 @@ class GenerateRequest(BaseModel):
     checkpoint: Optional[str] = Field(default=None, description="Dynamic checkpoint model name to swap in loader")
 
 
-
 class WorkflowInfo(BaseModel):
     """Workflow structure representation."""
+
     name: str
     display_name: str
     file: str
@@ -35,6 +36,7 @@ class WorkflowInfo(BaseModel):
 
 class StatusResponse(BaseModel):
     """ComfyUI server and application status response."""
+
     connected: bool
     comfyui_url: str
     workflows: List[WorkflowInfo]
@@ -44,6 +46,7 @@ class StatusResponse(BaseModel):
 
 class ImageResponse(BaseModel):
     """Individual image details response."""
+
     filename: str
     url: str
     metadata: Dict[str, Any]
@@ -51,6 +54,7 @@ class ImageResponse(BaseModel):
 
 class ImageListResponse(BaseModel):
     """Image list response grouped by date."""
+
     date: str
     images: List[str]
     latest_image: Optional[str] = None
@@ -59,7 +63,7 @@ class ImageListResponse(BaseModel):
 
 class OpenFolderRequest(BaseModel):
     """Request options for opening local file manager at the output path."""
+
     date_str: str
     filename: Optional[str] = None
     workflow: Optional[str] = "anima"
-

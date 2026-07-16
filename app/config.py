@@ -14,18 +14,17 @@ class Settings(BaseSettings):
 
     # OpenCode API
     opencode_api_key: str = Field(
-        default="",
-        validation_alias=AliasChoices("opencode_api_key", "OPENCODE_API_KEY", "OPENCODE_GO_API_KEY")
+        default="", validation_alias=AliasChoices("opencode_api_key", "OPENCODE_API_KEY", "OPENCODE_GO_API_KEY")
     )
     opencode_api_url: str = Field(
         default="https://opencode.ai/zen/go/v1/chat/completions",
         validation_alias=AliasChoices(
-            "opencode_api_url", 
-            "OPENCODE_API_URL", 
+            "opencode_api_url",
+            "OPENCODE_API_URL",
             "OPENCODE_CHAT_COMPLETIONS_URL",
             "OPENCODE_GO_API_URL",
-            "OPENCODE_GO_CHAT_COMPLETIONS_URL"
-        )
+            "OPENCODE_GO_CHAT_COMPLETIONS_URL",
+        ),
     )
     opencode_model: str = Field(
         default="deepseek-v4-flash",
@@ -34,16 +33,12 @@ class Settings(BaseSettings):
             "OPENCODE_MODEL",
             "OPENCODE_TRANSLATION_MODEL",
             "OPENCODE_GO_MODEL",
-            "OPENCODE_GO_PUNCTUATION_MODEL"
-        )
+            "OPENCODE_GO_PUNCTUATION_MODEL",
+        ),
     )
     opencode_thinking: str = Field(
         default="disabled",
-        validation_alias=AliasChoices(
-            "opencode_thinking",
-            "OPENCODE_THINKING",
-            "OPENCODE_GO_THINKING"
-        )
+        validation_alias=AliasChoices("opencode_thinking", "OPENCODE_THINKING", "OPENCODE_GO_THINKING"),
     )
 
     # Google AI Studio API
@@ -64,8 +59,7 @@ class Settings(BaseSettings):
     backend_port: Optional[int] = None
     outputs_dir: str = "./outputs"
     comfyui_output_dir: str = Field(
-        default="D:\\ComfyUI\\output",
-        validation_alias=AliasChoices("comfyui_output_dir", "COMFYUI_OUTPUT_DIR")
+        default="D:\\ComfyUI\\output", validation_alias=AliasChoices("comfyui_output_dir", "COMFYUI_OUTPUT_DIR")
     )
     default_workflow: str = "anima"
     log_level: str = "INFO"
@@ -82,11 +76,7 @@ class Settings(BaseSettings):
     default_sampler: str = "dpmpp_2m_sde_gpu"
     default_scheduler: str = "simple"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=False)
 
     @property
     def outputs_path(self) -> Path:

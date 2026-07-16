@@ -13,6 +13,7 @@ from app.presentation.routes import generate_routes, image_routes, config_routes
 
 class EndpointFilter(logging.Filter):
     """Filter out logs from health checks and connection status polls."""
+
     def filter(self, record: logging.LogRecord) -> bool:
         message = record.getMessage()
         return "/api/status" not in message and "/health" not in message
@@ -29,20 +30,18 @@ if log_file_path.exists():
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(settings.log_file, mode='w'),  # 'w' mode to overwrite
-        logging.StreamHandler()
-    ]
+        logging.FileHandler(settings.log_file, mode="w"),  # 'w' mode to overwrite
+        logging.StreamHandler(),
+    ],
 )
 
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="ComfyUI Prompt Editor",
-    description="AI-powered prompt editor and ComfyUI image generator",
-    version="1.0.0"
+    title="ComfyUI Prompt Editor", description="AI-powered prompt editor and ComfyUI image generator", version="1.0.0"
 )
 
 # Add CORS middleware
@@ -63,10 +62,7 @@ app.include_router(config_routes.router)
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "version": "1.0.0"
-    }
+    return {"status": "healthy", "version": "1.0.0"}
 
 
 # Mount outputs directory as static folder for direct image access
@@ -97,11 +93,8 @@ async def startup_event():
     # Filter out status/health check endpoint logs to prevent log pollution
     logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
-    logger.info("Application starting", extra={
-        "host": settings.app_host,
-        "port": settings.server_port
-    })
-    
+    logger.info("Application starting", extra={"host": settings.app_host, "port": settings.server_port})
+
     # Ensure directories exist
     Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
     Path(settings.log_file).parent.mkdir(parents=True, exist_ok=True)
@@ -115,9 +108,5 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "app.main:app",
-        host=settings.app_host,
-        port=settings.server_port,
-        reload=True
-    )
+
+    uvicorn.run("app.main:app", host=settings.app_host, port=settings.server_port, reload=True)

@@ -62,9 +62,7 @@ class ComfyUIAdapter:
                 "Workflow file not found",
                 extra={"workflow_path": str(target_path)},
             )
-            raise ImageGenerationError(
-                f"Workflow file not found: {target_path}"
-            )
+            raise ImageGenerationError(f"Workflow file not found: {target_path}")
 
         except json.JSONDecodeError as e:
             logger.error(
@@ -332,9 +330,7 @@ class ComfyUIAdapter:
     # UI-format conversion
     # ------------------------------------------------------------------
 
-    def convert_workflow_to_api_format(
-        self, workflow: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def convert_workflow_to_api_format(self, workflow: Dict[str, Any]) -> Dict[str, Any]:
         """
         Convert a UI-format workflow to ComfyUI API format.
 
@@ -427,9 +423,7 @@ class ComfyUIAdapter:
         try:
             prompt_id = await retry_async(_do_queue, max_retries=3, delay=1.0, backoff=2.0)
 
-            logger.info(
-                "Prompt queued successfully", extra={"prompt_id": prompt_id}
-            )
+            logger.info("Prompt queued successfully", extra={"prompt_id": prompt_id})
             return prompt_id
 
         except httpx.HTTPStatusError as e:
@@ -495,9 +489,7 @@ class ComfyUIAdapter:
 
             await asyncio.sleep(poll_interval)
 
-    async def get_image(
-        self, filename: str, subfolder: str, folder_type: str
-    ) -> bytes:
+    async def get_image(self, filename: str, subfolder: str, folder_type: str) -> bytes:
         """
         Download a generated image from ComfyUI.
 
@@ -511,10 +503,7 @@ class ComfyUIAdapter:
 
         async def _do_download():
             async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.get(
-                    f"http://{self.server_address}/view",
-                    params=data
-                )
+                resp = await client.get(f"http://{self.server_address}/view", params=data)
                 resp.raise_for_status()
                 return resp.content
 
@@ -538,17 +527,15 @@ class ComfyUIAdapter:
     async def upload_image(self, image_bytes: bytes, filename: str) -> Dict[str, Any]:
         """
         Upload an image to ComfyUI input folder via ComfyUI API /upload/image.
-        
+
         Returns:
             dict: ComfyUI response containing name, subfolder, and type
         """
         url = f"http://{self.server_address}/upload/image"
-        
+
         async def _do_upload():
             async with httpx.AsyncClient(timeout=30.0) as client:
-                files = {
-                    "image": (filename, image_bytes, "image/png")
-                }
+                files = {"image": (filename, image_bytes, "image/png")}
                 response = await client.post(url, files=files)
                 response.raise_for_status()
                 return response.json()
@@ -630,17 +617,13 @@ class ComfyUIAdapter:
             if not image_info:
                 # Log full output keys to aid future debugging
                 output_summary = {
-                    nid: list(v.keys()) if isinstance(v, dict) else type(v).__name__
-                    for nid, v in outputs.items()
+                    nid: list(v.keys()) if isinstance(v, dict) else type(v).__name__ for nid, v in outputs.items()
                 }
                 logger.error(
                     "No image found in ComfyUI output",
                     extra={"prompt_id": prompt_id, "output_keys": str(output_summary)},
                 )
-                raise ImageGenerationError(
-                    f"No image found in ComfyUI output. "
-                    f"Available output keys: {output_summary}"
-                )
+                raise ImageGenerationError(f"No image found in ComfyUI output. Available output keys: {output_summary}")
 
             image_data = await self.get_image(
                 image_info["filename"],
@@ -657,9 +640,7 @@ class ComfyUIAdapter:
             return image_data, generation_info
 
         except Exception as e:
-            logger.error(
-                "Image generation failed", extra={"error": str(e)}, exc_info=True
-            )
+            logger.error("Image generation failed", extra={"error": str(e)}, exc_info=True)
             if isinstance(e, (ImageGenerationError, APIError)):
                 raise
             raise ImageGenerationError(f"Image generation failed: {str(e)}")

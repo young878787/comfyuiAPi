@@ -252,6 +252,29 @@
             </svg>
           </div>
           
+          <!-- Left/Right Navigation Buttons -->
+          <button 
+            v-if="hasPrev" 
+            class="lightbox-nav-btn prev-btn" 
+            @click.stop="navigateImage(-1)" 
+            title="上一張 (左方向鍵)"
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+
+          <button 
+            v-if="hasNext" 
+            class="lightbox-nav-btn next-btn" 
+            @click.stop="navigateImage(1)" 
+            title="下一張 (右方向鍵)"
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+
           <div class="lightbox-content" @click.stop>
             <div :class="['lightbox-image-wrapper', isZoomed ? 'zoomed' : '']">
               <img 
@@ -326,10 +349,36 @@ const toggleZoom = () => {
   isZoomed.value = !isZoomed.value
 }
 
+// Lightbox navigation logic
+const currentIndex = computed(() => {
+  if (!props.activeImage || !props.history.length) return -1
+  return props.history.findIndex(img => img.filename === props.activeImage.filename)
+})
+
+const hasPrev = computed(() => {
+  return currentIndex.value > 0
+})
+
+const hasNext = computed(() => {
+  return currentIndex.value !== -1 && currentIndex.value < props.history.length - 1
+})
+
+const navigateImage = (direction) => {
+  const newIndex = currentIndex.value + direction
+  if (newIndex >= 0 && newIndex < props.history.length) {
+    isZoomed.value = false
+    selectImage(props.history[newIndex])
+  }
+}
+
 // Keyboard shortcuts & overflow body management
 const handleKeyDown = (e) => {
   if (e.key === 'Escape') {
     showLightbox.value = false
+  } else if (e.key === 'ArrowLeft') {
+    navigateImage(-1)
+  } else if (e.key === 'ArrowRight') {
+    navigateImage(1)
   }
 }
 
@@ -813,6 +862,59 @@ watch(() => props.activeImage, () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Lightbox Navigation Buttons */
+.lightbox-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 10002;
+  backdrop-filter: blur(8px);
+}
+
+.lightbox-nav-btn:hover {
+  background: #6c5ce7;
+  border-color: #6c5ce7;
+  color: white;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 0 20px rgba(108, 92, 231, 0.5);
+}
+
+.lightbox-nav-btn:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+.prev-btn {
+  left: 24px;
+}
+
+.next-btn {
+  right: 24px;
+}
+
+@media (max-width: 768px) {
+  .lightbox-nav-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .prev-btn {
+    left: 12px;
+  }
+  .next-btn {
+    right: 12px;
+  }
 }
 
 .lightbox-close-btn {

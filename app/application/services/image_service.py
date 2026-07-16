@@ -15,22 +15,18 @@ logger = logging.getLogger(__name__)
 
 class ImageService:
     """Service for managing image generation."""
-    
-    def __init__(
-        self,
-        image_repository: ImageRepository,
-        comfyui_adapter: ComfyUIAdapter
-    ):
+
+    def __init__(self, image_repository: ImageRepository, comfyui_adapter: ComfyUIAdapter):
         """
         Initialize service with dependencies.
-        
+
         Args:
             image_repository: Image repository
             comfyui_adapter: ComfyUI API adapter
         """
         self.image_repository = image_repository
         self.comfyui_adapter = comfyui_adapter
-    
+
     async def generate_image(
         self,
         positive_prompt: str,
@@ -49,11 +45,11 @@ class ImageService:
         workflow_name: str = "anima",
         workflow_path: Optional[str] = None,
         checkpoint: Optional[str] = None,
-        input_image_name: Optional[str] = None
+        input_image_name: Optional[str] = None,
     ) -> Tuple[str, ImageMetadata]:
         """
         Generate image using ComfyUI.
-        
+
         Args:
             positive_prompt: Final positive prompt for generation
             negative_prompt: Negative prompt
@@ -72,7 +68,7 @@ class ImageService:
             workflow_path: Absolute path to the workflow JSON file to load
             checkpoint: Dynamic checkpoint model name
             input_image_name: Reference image name uploaded to ComfyUI
-            
+
         Returns:
             Tuple[str, ImageMetadata]: (saved_path, metadata)
         """
@@ -84,17 +80,20 @@ class ImageService:
         seed = seed or random.randint(1, 2**32 - 1)
         sampler = sampler or settings.default_sampler
         scheduler = scheduler or settings.default_scheduler
-        
-        logger.info("Starting image generation", extra={
-            "workflow": workflow_name,
-            "width": width,
-            "height": height,
-            "steps": steps,
-            "seed": seed,
-            "checkpoint": checkpoint,
-            "input_image_name": input_image_name
-        })
-        
+
+        logger.info(
+            "Starting image generation",
+            extra={
+                "workflow": workflow_name,
+                "width": width,
+                "height": height,
+                "steps": steps,
+                "seed": seed,
+                "checkpoint": checkpoint,
+                "input_image_name": input_image_name,
+            },
+        )
+
         image_data, generation_info = await self.comfyui_adapter.generate_image(
             positive_prompt=positive_prompt,
             negative_prompt=negative_prompt,
@@ -107,9 +106,9 @@ class ImageService:
             scheduler=scheduler,
             workflow_path=workflow_path,
             checkpoint=checkpoint,
-            input_image_name=input_image_name
+            input_image_name=input_image_name,
         )
-        
+
         # Create metadata
         metadata = ImageMetadata(
             filename="",  # Will be set by repository
@@ -130,37 +129,32 @@ class ImageService:
             ai_provider=ai_provider,
             workflow_name=workflow_name,
             checkpoint=checkpoint or "",
-            comfyui_filename=generation_info.get("filename", "")
+            comfyui_filename=generation_info.get("filename", ""),
         )
-        
+
         # Save image
-        saved_path = await self.image_repository.save_image(
-            image_data=image_data,
-            metadata=metadata
-        )
-        
-        logger.info("Image generation completed", extra={
-            "saved_path": saved_path
-        })
-        
+        saved_path = await self.image_repository.save_image(image_data=image_data, metadata=metadata)
+
+        logger.info("Image generation completed", extra={"saved_path": saved_path})
+
         return saved_path, metadata
-    
+
     async def get_image(self, date_str: str, filename: str) -> bytes:
         """Get image binary data by date and filename."""
         return await self.image_repository.get_image(date_str, filename)
-    
+
     def get_image_path(self, date_str: str, filename: str):
         """Get image file path by date and filename."""
         return self.image_repository.get_image_path(date_str, filename)
-    
+
     async def get_image_metadata(self, date_str: str, filename: str) -> ImageMetadata:
         """Get image metadata by date and filename."""
         return await self.image_repository.get_image_metadata(date_str, filename)
-    
+
     async def list_images(self, date_str: str) -> list[str]:
         """List all image files for a specific date."""
         return await self.image_repository.list_images(date_str)
-    
+
     async def get_latest_image(self, date_str: str) -> Optional[str]:
         """Get the latest image filename for a specific date."""
         return await self.image_repository.get_latest_image(date_str)

@@ -9,7 +9,7 @@ from typing import Optional
 class ImageMetadata:
     """
     Image metadata entity.
-    
+
     Attributes:
         filename: Image filename (e.g., img_001.png)
         positive_prompt: Positive prompt used for generation
@@ -30,7 +30,7 @@ class ImageMetadata:
         workflow_name: Name of the workflow file used
         checkpoint: Name of the checkpoint model used
     """
-    
+
     filename: str
     positive_prompt: str
     negative_prompt: str
@@ -50,7 +50,7 @@ class ImageMetadata:
     workflow_name: str = ""
     checkpoint: str = ""
     comfyui_filename: str = ""
-    
+
     def to_dict(self) -> dict:
         """Convert metadata to dictionary."""
         return {
@@ -74,7 +74,7 @@ class ImageMetadata:
             "checkpoint": self.checkpoint,
             "comfyui_filename": self.comfyui_filename,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> "ImageMetadata":
         """Create metadata from dictionary."""

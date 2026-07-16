@@ -61,9 +61,7 @@ class GoogleAIAdapter(BaseAIAdapter):
 
         async def _do_generate():
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    self.api_url, headers=headers, json=payload
-                )
+                response = await client.post(self.api_url, headers=headers, json=payload)
                 response.raise_for_status()
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
@@ -89,9 +87,7 @@ class GoogleAIAdapter(BaseAIAdapter):
                 extra={"status_code": e.response.status_code, "error": str(e)},
                 exc_info=True,
             )
-            raise APIError(
-                f"Google AI Studio API error: {e.response.status_code} - {e.response.text}"
-            )
+            raise APIError(f"Google AI Studio API error: {e.response.status_code} - {e.response.text}")
 
         except httpx.TimeoutException:
             logger.error("Google AI Studio API timeout")

@@ -21,10 +21,7 @@ def get_generate_service() -> GenerateService:
 
 
 @router.post("/generate")
-async def generate(
-    request: GenerateRequest,
-    service: GenerateService = Depends(get_generate_service)
-):
+async def generate(request: GenerateRequest, service: GenerateService = Depends(get_generate_service)):
     """
     Handle POST generate request and stream SSE progress events.
     """
@@ -32,9 +29,5 @@ async def generate(
     return StreamingResponse(
         generator,
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
     )
