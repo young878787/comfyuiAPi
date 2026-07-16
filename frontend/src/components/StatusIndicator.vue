@@ -19,10 +19,10 @@ defineProps({
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 6px 12px;
-  border-radius: 20px;
+  border-radius: 4px;
   backdrop-filter: blur(10px);
 }
 

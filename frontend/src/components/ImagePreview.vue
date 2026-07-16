@@ -505,15 +505,16 @@ watch(() => props.activeImage, () => {
   width: 100%;
   height: 480px;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--card-shadow);
+  transition: var(--transition);
 }
 
 .active-image-wrapper {
@@ -550,23 +551,21 @@ watch(() => props.activeImage, () => {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(8px);
+  transition: var(--transition);
   text-decoration: none;
 }
 
 .btn-action-round:hover {
-  background: #6c5ce7;
-  border-color: #6c5ce7;
-  transform: scale(1.1);
-  box-shadow: 0 0 15px rgba(108, 92, 231, 0.4);
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.08);
 }
 
 .generating-placeholder {
@@ -575,7 +574,7 @@ watch(() => props.activeImage, () => {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  color: white;
+  color: var(--text-primary);
   text-align: center;
 }
 
@@ -587,15 +586,15 @@ watch(() => props.activeImage, () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: rgba(108, 92, 231, 0.05);
-  box-shadow: 0 0 20px rgba(108, 92, 231, 0.2);
+  background: var(--accent-light);
+  box-shadow: 0 0 15px var(--input-focus-shadow);
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(255, 255, 255, 0.05);
-  border-top-color: #6c5ce7;
+  border: 3px solid var(--panel-border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -608,7 +607,7 @@ watch(() => props.activeImage, () => {
 
 .sub-text {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-muted);
 }
 
 .empty-placeholder {
@@ -616,13 +615,13 @@ watch(() => props.activeImage, () => {
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-muted);
   padding: 32px;
   text-align: center;
 }
 
 .empty-placeholder h3 {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-primary);
   font-size: 1.1rem;
 }
 
@@ -646,16 +645,17 @@ watch(() => props.activeImage, () => {
 .section-header h4 {
   font-size: 0.8rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+  opacity: 0.8;
   text-transform: uppercase;
 }
 
 .count-tag {
   font-size: 0.7rem;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
+  background: var(--button-ghost-hover);
+  color: var(--text-muted);
   padding: 2px 6px;
-  border-radius: 10px;
+  border-radius: 4px;
 }
 
 .history-track {
@@ -669,13 +669,13 @@ watch(() => props.activeImage, () => {
   width: 72px;
   height: 96px;
   flex-shrink: 0;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
   overflow: hidden;
   position: relative;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.01);
-  transition: all 0.2s ease;
+  background: var(--input-bg);
+  transition: var(--transition);
 }
 
 .thumb-card img {
@@ -686,12 +686,12 @@ watch(() => props.activeImage, () => {
 
 .thumb-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.3);
+  border-color: var(--accent);
 }
 
 .thumb-card.active {
-  border-color: #6c5ce7;
-  box-shadow: 0 0 10px rgba(108, 92, 231, 0.5);
+  border-color: var(--accent);
+  box-shadow: 0 0 8px var(--input-focus-shadow);
   transform: scale(1.02);
 }
 
@@ -699,27 +699,30 @@ watch(() => props.activeImage, () => {
   position: absolute;
   bottom: 4px;
   right: 4px;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.6);
   color: white;
   font-size: 0.65rem;
   font-weight: 700;
   padding: 1px 4px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .metadata-card {
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 10px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
   padding: 14px;
+  box-shadow: var(--card-shadow);
+  transition: var(--transition);
 }
 
 .metadata-header h4 {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+  opacity: 0.8;
   text-transform: uppercase;
   margin-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--panel-border);
   padding-bottom: 6px;
 }
 
@@ -741,12 +744,12 @@ watch(() => props.activeImage, () => {
 
 .meta-label {
   font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
 }
 
 .meta-val {
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-primary);
   word-break: break-all;
 }
 
@@ -767,21 +770,21 @@ watch(() => props.activeImage, () => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.6);
+  background: var(--button-ghost-hover);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
   padding: 2px 6px;
   font-size: 0.65rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   user-select: none;
 }
 
 .meta-action-btn:hover {
-  background: rgba(108, 92, 231, 0.15);
-  border-color: rgba(108, 92, 231, 0.35);
-  color: #a29bfe;
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .meta-action-btn:active {
@@ -799,7 +802,7 @@ watch(() => props.activeImage, () => {
 }
 
 .action-text.success {
-  color: #2ec4b6;
+  color: var(--success);
   font-weight: 600;
 }
 
@@ -813,14 +816,15 @@ watch(() => props.activeImage, () => {
   box-sizing: border-box;
   font-family: monospace;
   font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  padding: 4px 6px;
-  border-radius: 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-border);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
   max-height: 80px;
   overflow-y: auto;
   white-space: pre-wrap;
   transition: max-height 0.25s ease;
+  color: var(--text-primary);
 }
 
 .meta-val.code.final {
@@ -832,12 +836,12 @@ watch(() => props.activeImage, () => {
 }
 
 .meta-val.idea {
-  color: #a29bfe;
+  color: var(--accent);
   font-weight: 500;
 }
 
 .meta-val.robot {
-  color: #2ec4b6;
+  color: var(--success);
   font-weight: 500;
 }
 
@@ -849,6 +853,7 @@ watch(() => props.activeImage, () => {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
 /* Lightbox Styles */
 .lightbox-overlay {
   position: fixed;
@@ -856,8 +861,8 @@ watch(() => props.activeImage, () => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(10, 11, 21, 0.9);
-  backdrop-filter: blur(16px);
+  background: rgba(21, 20, 19, 0.95);
+  backdrop-filter: blur(12px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -874,22 +879,20 @@ watch(() => props.activeImage, () => {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: var(--transition);
   z-index: 10002;
-  backdrop-filter: blur(8px);
 }
 
 .lightbox-nav-btn:hover {
-  background: #6c5ce7;
-  border-color: #6c5ce7;
-  color: white;
-  transform: translateY(-50%) scale(1.1);
-  box-shadow: 0 0 20px rgba(108, 92, 231, 0.5);
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 0 15px var(--input-focus-shadow);
 }
 
 .lightbox-nav-btn:active {
@@ -926,18 +929,17 @@ watch(() => props.activeImage, () => {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.7);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   z-index: 10001;
 }
 
 .lightbox-close-btn:hover {
   background: rgba(255, 255, 255, 0.15);
-  color: white;
   transform: scale(1.05);
 }
 
@@ -967,8 +969,8 @@ watch(() => props.activeImage, () => {
   max-width: 90vw;
   max-height: 80vh;
   object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), max-width 0.3s ease, max-height 0.3s ease;
 }
 
@@ -997,16 +999,15 @@ watch(() => props.activeImage, () => {
   gap: 16px;
   margin-top: 16px;
   padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 30px;
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--radius-sm);
   z-index: 10001;
 }
 
 .lightbox-info {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.6);
   font-family: monospace;
 }
 
@@ -1015,18 +1016,17 @@ watch(() => props.activeImage, () => {
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  background: #6c5ce7;
-  border-radius: 20px;
-  color: white;
+  background: var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--accent-text);
   font-size: 0.85rem;
   font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: var(--transition);
 }
 
 .btn-lightbox-action:hover {
-  background: #5b4cc4;
-  box-shadow: 0 0 12px rgba(108, 92, 231, 0.4);
+  background: var(--accent-hover);
   transform: translateY(-1px);
 }
 
@@ -1055,12 +1055,12 @@ watch(() => props.activeImage, () => {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  background: var(--button-ghost-hover);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
   padding: 8px 16px;
   margin-top: 4px;
-  backdrop-filter: blur(10px);
+  transition: var(--transition);
 }
 
 .toolbar-btn {
@@ -1069,21 +1069,21 @@ watch(() => props.activeImage, () => {
   gap: 8px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
   font-size: 0.85rem;
   font-weight: 500;
   cursor: pointer;
   padding: 6px 12px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
   text-decoration: none;
   user-select: none;
 }
 
 .toolbar-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-  transform: translateY(-1px);
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--accent);
 }
 
 .toolbar-btn:active {
@@ -1093,21 +1093,21 @@ watch(() => props.activeImage, () => {
 .toolbar-divider {
   width: 1px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--panel-border);
 }
 
 .spinner-percent {
   position: absolute;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #a29bfe;
+  color: var(--accent);
   z-index: 10;
 }
 
 .progress-bar-container {
   width: 240px;
   height: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--input-border);
   border-radius: 3px;
   overflow: hidden;
   margin-top: 4px;
@@ -1115,13 +1115,14 @@ watch(() => props.activeImage, () => {
 
 .progress-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+  background: var(--accent);
   border-radius: 3px;
   transition: width 0.3s ease-out;
 }
 
 .toolbar-btn.delete-btn:hover {
-  background: rgba(231, 76, 60, 0.15);
-  color: #ff7675;
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid var(--danger);
 }
 </style>

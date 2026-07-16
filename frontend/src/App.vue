@@ -1,9 +1,9 @@
 <template>
-  <div class="app-workspace dark-theme">
+  <div :class="['app-workspace', isDark ? 'dark-theme' : 'light-theme']">
     <!-- Header -->
     <header class="app-header">
       <div class="header-logo">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2.5">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5">
           <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
         </svg>
         <span>ComfyUI Prompt Editor</span>
@@ -21,6 +21,22 @@
       </div>
 
       <div class="header-actions">
+        <button class="theme-toggle-btn" @click="toggleTheme" :title="isDark ? '切換為暖陽白' : '切換為暖閣黑'">
+          <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
         <StatusIndicator :connected="connected" />
       </div>
     </header>
@@ -104,6 +120,13 @@ import PromptPanel from './components/PromptPanel.vue'
 import Img2ImgPanel from './components/Img2ImgPanel.vue'
 import ParameterForm from './components/ParameterForm.vue'
 import ImagePreview from './components/ImagePreview.vue'
+
+// Theme state
+const isDark = ref(localStorage.getItem('theme') !== 'light')
+const toggleTheme = () => {
+  isDark.value = !isDark.value
+  localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
+}
 
 // Tab state
 const activeTab = ref('txt2img') // 'txt2img' or 'img2img'
@@ -481,20 +504,11 @@ onMounted(() => {
 </script>
 
 <style>
-/* Global Dark Theme overrides */
-:root {
-  --workspace-bg: #0d0e15;
-  --panel-bg: rgba(20, 21, 33, 0.6);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --text-primary: #f8f9fa;
-  --text-muted: #8a8d9a;
-  --accent: #6c5ce7;
-}
-
 body {
   margin: 0;
   background-color: var(--workspace-bg);
   color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 </style>
 
@@ -504,8 +518,9 @@ body {
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: radial-gradient(circle at top right, #1a153b, var(--workspace-bg) 60%);
+  background-color: var(--workspace-bg);
   overflow: hidden;
+  transition: background-color 0.3s ease;
 }
 
 /* Header */
@@ -515,10 +530,10 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
-  background: rgba(13, 14, 21, 0.8);
-  border-bottom: 1px solid var(--border-glass);
-  backdrop-filter: blur(10px);
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-border);
   z-index: 10;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .header-logo {
@@ -526,19 +541,45 @@ body {
   align-items: center;
   gap: 10px;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   letter-spacing: 0.5px;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .badge {
   font-size: 0.65rem;
-  background: rgba(108, 92, 231, 0.2);
-  border: 1px solid rgba(108, 92, 231, 0.4);
-  color: #a29bfe;
-  padding: 1px 6px;
+  background: var(--accent-light);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  opacity: 0.85;
+  padding: 2px 6px;
   border-radius: 4px;
   font-weight: 600;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--button-ghost-hover);
+  color: var(--text-primary);
 }
 
 /* Body layout */
@@ -555,11 +596,11 @@ body {
 
 .glass-card {
   background: var(--panel-bg);
-  border: 1px solid var(--border-glass);
-  border-radius: 16px;
-  backdrop-filter: blur(25px);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--panel-shadow);
   overflow: hidden;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .panel-left {
@@ -577,13 +618,13 @@ body {
 
 .section-title {
   padding: 20px;
-  border-bottom: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .section-title h3 {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
@@ -606,11 +647,11 @@ body {
 }
 
 .panel-section.divider {
-  border-top: 1px solid var(--border-glass);
+  border-top: 1px solid var(--panel-border);
   padding-top: 16px;
 }
 
-/* Collapsible 고급參數 */
+/* Collapsible 高級參數 */
 .collapsible-header {
   display: flex;
   justify-content: space-between;
@@ -622,12 +663,13 @@ body {
 .collapsible-header h4 {
   font-size: 0.85rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  opacity: 0.8;
   text-transform: uppercase;
 }
 
 .arrow {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
   transition: transform 0.3s;
 }
 
@@ -654,22 +696,23 @@ body {
 }
 
 .scrollable::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 .scrollable::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Navigation Tabs in Header */
 .header-nav {
   display: flex;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.03);
+  gap: 4px;
+  background: var(--button-ghost-hover);
   padding: 4px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .nav-tab {
@@ -677,24 +720,23 @@ body {
   border: none;
   color: var(--text-muted);
   padding: 6px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: var(--transition);
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .nav-tab:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
 }
 
 .nav-tab.active {
-  color: #fff;
-  background: #6c5ce7;
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+  color: var(--accent-text);
+  background: var(--accent);
+  box-shadow: var(--card-shadow);
 }
 </style>

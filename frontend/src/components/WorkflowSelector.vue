@@ -61,11 +61,11 @@ const emitChange = () => {
 }
 
 label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
 }
 
 .selector-wrapper {
@@ -76,28 +76,26 @@ label {
 .glass-select {
   appearance: none;
   width: 100%;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--input-text);
   padding: 10px 36px 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
+  transition: var(--transition);
 }
 
 .glass-select:focus {
-  border-color: #6c5ce7;
-  box-shadow: 0 0 10px rgba(108, 92, 231, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow);
   outline: none;
 }
 
 .glass-select option {
-  background: #1e1e2e;
-  color: white;
+  background: var(--panel-bg);
+  color: var(--text-primary);
   padding: 10px;
 }
 
@@ -107,7 +105,7 @@ label {
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
 }

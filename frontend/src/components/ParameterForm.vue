@@ -234,7 +234,7 @@ label {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
 }
 
 .resolution-inputs {
@@ -244,31 +244,31 @@ label {
 }
 
 .x-divider {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
   font-size: 1rem;
 }
 
 .glass-input, .glass-select, .glass-textarea {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: white;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--input-text);
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  transition: all 0.2s ease;
+  transition: var(--transition);
 }
 
 .glass-input:focus, .glass-select:focus, .glass-textarea:focus {
-  border-color: #6c5ce7;
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: 0 0 10px rgba(108, 92, 231, 0.2);
+  border-color: var(--input-focus);
+  background: var(--input-bg);
+  box-shadow: 0 0 0 3px var(--input-focus-shadow);
   outline: none;
 }
 
 .glass-select {
   appearance: none;
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255, 255, 255, 0.5)' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238e8a82' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px;
@@ -276,8 +276,8 @@ label {
 }
 
 .glass-select option {
-  background: #1e1e2e;
-  color: white;
+  background: var(--panel-bg);
+  color: var(--text-primary);
 }
 
 .seed-input-wrapper {
@@ -296,50 +296,51 @@ label {
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
   width: 24px;
   height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
 }
 
 .btn-seed:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--button-ghost-hover);
+  color: var(--text-primary);
 }
 
 .attempts-selector {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 4px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
+  background: var(--button-ghost-hover);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
   padding: 3px;
+  transition: var(--transition);
 }
 
 .btn-attempt {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
   padding: 6px 0;
   font-size: 0.8rem;
-  border-radius: 4px;
-  transition: all 0.2s;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
 }
 
 .btn-attempt:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
+  background: var(--panel-bg);
+  color: var(--text-primary);
 }
 
 .btn-attempt.active {
-  background: #6c5ce7;
-  color: white;
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.3);
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: var(--card-shadow);
 }
 
 .full-width {
