@@ -30,6 +30,12 @@
         rows="4"
         :disabled="generating"
       ></textarea>
+
+      <!-- Tag Browser -->
+      <TagBrowser
+        @select-tag="handleSelectTag"
+        @deselect-tag="handleDeselectTag"
+      />
     </div>
 
     <!-- Reference Image (Optional) -->
@@ -151,6 +157,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import TagBrowser from './TagBrowser.vue'
 
 const props = defineProps({
   generating: {
@@ -187,6 +194,34 @@ const showMetadataBanner = ref(false)
 
 const clearPrompt = () => { prompt.value = '' }
 const clearIdea = () => { idea.value = '' }
+
+// Handle tag browser selections - append to idea
+const handleSelectTag = (tag) => {
+  const valueToAdd = tag.zh || tag.en
+  if (!valueToAdd) return
+  
+  const current = idea.value.trim()
+  if (current) {
+    const tags = current.split(/,\s*/).map(t => t.trim())
+    if (!tags.includes(valueToAdd)) {
+      idea.value = current + ', ' + valueToAdd
+    }
+  } else {
+    idea.value = valueToAdd
+  }
+}
+
+const handleDeselectTag = (tag) => {
+  const valueToRemove = tag.zh || tag.en
+  if (!valueToRemove) return
+  
+  const current = idea.value.trim()
+  if (!current) return
+  
+  const tags = current.split(/,\s*/).map(t => t.trim())
+  const filtered = tags.filter(t => t !== valueToRemove)
+  idea.value = filtered.join(', ')
+}
 
 const triggerFileInput = () => {
   if (!props.generating) {
