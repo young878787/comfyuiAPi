@@ -47,7 +47,7 @@
           <!-- Prompt Controls -->
           <div class="panel-section">
             <PromptPanel
-              v-if="activeTab === 'txt2img'"
+              v-show="activeTab === 'txt2img'"
               :generating="generating"
               :progress-percentage="progressPercentage"
               :progress-message="progressMessage"
@@ -57,7 +57,7 @@
               @apply-parsed-metadata="handleApplyParsedMetadata"
             />
             <Img2ImgPanel
-              v-else
+              v-show="activeTab === 'img2img'"
               :workflow="activeWorkflow"
               :params="params"
               @image-generated="loadHistory"
@@ -201,7 +201,8 @@ const handleWorkflowChange = (wfName) => {
 // Load today's history
 const loadHistory = async () => {
   try {
-    const todayStr = new Date().toISOString().split('T')[0]
+    const d = new Date()
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const res = await fetch(`/api/image/list/${todayStr}`)
     if (res.ok) {
       const data = await res.json()

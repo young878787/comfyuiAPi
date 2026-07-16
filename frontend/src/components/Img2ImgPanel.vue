@@ -311,6 +311,10 @@ const startBatchGeneration = async () => {
   isGenerating.value = true
   errorMessage.value = ''
   
+  // 記錄當端批量放大啟動時的 workflow 與 params，避免在跑圖期間切換 Tab 造成後續佇列的參數被修改
+  const currentWorkflow = props.workflow
+  const currentParams = { ...props.params }
+  
   for (let i = 0; i < batchImages.value.length; i++) {
     const img = batchImages.value[i]
     if (img.status === 'done') continue
@@ -328,18 +332,18 @@ const startBatchGeneration = async () => {
         prompt: img.prompt.trim() || globalPrompt.value.trim(),
         idea: '', // no AI modification during upscale
         attempts: 1,
-        workflow: props.workflow,
-        width: props.params.width,
-        height: props.params.height,
-        steps: props.params.steps,
-        cfg: props.params.cfg,
-        seed: props.params.seed,
-        sampler: props.params.sampler,
-        scheduler: props.params.scheduler,
+        workflow: currentWorkflow,
+        width: currentParams.width,
+        height: currentParams.height,
+        steps: currentParams.steps,
+        cfg: currentParams.cfg,
+        seed: currentParams.seed,
+        sampler: currentParams.sampler,
+        scheduler: currentParams.scheduler,
         negative_prompt: img.negativePrompt.trim() || globalNegative.value.trim(),
         image_base64: base64Str,
         image_mime_type: img.file.type,
-        checkpoint: props.params.checkpoint || null
+        checkpoint: currentParams.checkpoint || null
       }
       
       await runSingleGeneration(img, reqBody)

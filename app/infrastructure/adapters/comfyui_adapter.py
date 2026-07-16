@@ -5,6 +5,8 @@ import urllib.request
 import urllib.parse
 import logging
 import asyncio
+import copy
+import re
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 from datetime import datetime
@@ -406,7 +408,34 @@ class ComfyUIAdapter:
         if self._is_ui_format(workflow):
             api_format = self.convert_workflow_to_api_format(workflow)
         else:
-            api_format = workflow  # already API format
+            api_format = copy.deepcopy(workflow)  # already API format
+
+        # Resolve dynamic date/time placeholders (e.g. %date:yyyy-MM-dd%) in filename_prefixes
+        now = datetime.now()
+        
+        def repl_date(match):
+            fmt = match.group(1)
+            py_fmt = fmt.replace("yyyy", "%Y").replace("yy", "%y") \
+                        .replace("MM", "%m") \
+                        .replace("dd", "%d") \
+                        .replace("HH", "%H") \
+                        .replace("hh", "%I") \
+                        .replace("mm", "%M") \
+                        .replace("ss", "%S")
+            return now.strftime(py_fmt)
+
+        for node_data in api_format.values():
+            if not isinstance(node_data, dict):
+                continue
+            inputs = node_data.get("inputs")
+            if isinstance(inputs, dict) and "filename_prefix" in inputs:
+                prefix = inputs["filename_prefix"]
+                if isinstance(prefix, str):
+                    # Replace %date:FORMAT%
+                    prefix = re.sub(r'%date:([^%]+)%', repl_date, prefix)
+                    # Replace %date% with default yyyy-MM-dd
+                    prefix = prefix.replace("%date%", now.strftime("%Y-%m-%d"))
+                    inputs["filename_prefix"] = prefix
 
         prompt = {"prompt": api_format}
 
