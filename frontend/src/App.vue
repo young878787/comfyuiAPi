@@ -89,7 +89,7 @@
               </svg>
             </div>
             <div class="collapsible-content" v-show="showParams">
-              <ParameterForm v-model:params="params" :hide-resolution="activeTab === 'img2img'" />
+              <ParameterForm v-model:params="params" :hide-resolution="activeTab === 'img2img'" :hide-attempts="activeTab === 'img2img'" />
             </div>
           </div>
         </div>

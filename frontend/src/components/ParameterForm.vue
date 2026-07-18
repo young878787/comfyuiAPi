@@ -36,6 +36,18 @@
             @change="emitUpdate"
           />
         </div>
+        <div class="resolution-presets">
+          <button
+            v-for="preset in resolutionPresets"
+            :key="preset.name"
+            type="button"
+            :class="['btn-preset', isPresetActive(preset) ? 'active' : '']"
+            @click="setResolution(preset)"
+          >
+            {{ preset.name }}
+            <span class="preset-dims">({{ preset.width }}×{{ preset.height }})</span>
+          </button>
+        </div>
       </div>
 
       <!-- Steps & CFG -->
@@ -109,7 +121,7 @@
       </div>
 
       <!-- Attempts -->
-      <div class="form-group span-2">
+      <div v-if="!hideAttempts" class="form-group span-2">
         <label>批次生成數量 (1-5)</label>
         <div class="attempts-selector">
           <button
@@ -147,6 +159,10 @@ const props = defineProps({
     required: true
   },
   hideResolution: {
+    type: Boolean,
+    default: false
+  },
+  hideAttempts: {
     type: Boolean,
     default: false
   }
@@ -203,6 +219,23 @@ const setAttempts = (n) => {
   emitUpdate()
 }
 
+const resolutionPresets = [
+  { name: '手機', width: 600, height: 1328 },
+  { name: '4:5', width: 1048, height: 1352 },
+  { name: '9:16', width: 904, height: 1600 },
+  { name: '16:9橫向', width: 1600, height: 904 }
+]
+
+const setResolution = (preset) => {
+  localParams.width = preset.width
+  localParams.height = preset.height
+  emitUpdate()
+}
+
+const isPresetActive = (preset) => {
+  return Number(localParams.width) === preset.width && Number(localParams.height) === preset.height
+}
+
 const emitUpdate = () => {
   emit('update:params', { ...localParams })
 }
@@ -241,6 +274,45 @@ label {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.resolution-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.btn-preset {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--text-muted);
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-preset:hover {
+  background: var(--button-ghost-hover);
+  color: var(--text-primary);
+  border-color: var(--input-focus);
+}
+
+.btn-preset.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  box-shadow: var(--card-shadow);
+}
+
+.preset-dims {
+  opacity: 0.65;
+  font-size: 0.7rem;
 }
 
 .x-divider {
