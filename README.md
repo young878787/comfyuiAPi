@@ -81,7 +81,18 @@ OPENCODE_API_KEY=your_opencode_api_key_here
 
 ## 啟動方式
 
-### 方式一：生產模式（推薦）
+### 方式一：Windows 一鍵啟動腳本（Windows 用戶推薦 & 最簡單）
+
+在 Windows 環境部署好 Python 虛擬環境 (`.venv`) 且填好 `.env` 後，直接雙擊執行 [run_webui.bat](file:///d:/comfyuiAPi/run_webui.bat) 即可。
+
+* **自動偵測**：腳本會自動探測 ComfyUI 是否在運行，並掃描常見埠號（如 8188）。
+* **自動安裝**：若未偵測到前端依賴，會自動執行 `npm install`。
+* **一鍵開啟**：在同一個命令視窗內同時啟動後端（埠號 `15006`）與前端 Vite（埠號 `15005`）。
+* 啟動完成後，即可直接訪問：`http://localhost:15005` 進行使用。
+
+---
+
+### 方式二：手動生產模式
 
 先建置前端，再啟動後端。Frontend 由 FastAPI 直接服務。
 
@@ -100,7 +111,7 @@ python -m app.server
 
 ---
 
-### 方式二：開發模式（前後端分離熱重載）
+### 方式三：手動開發模式（前後端分離熱重載）
 
 後端和前端分別啟動，支援雙向熱重載。
 
