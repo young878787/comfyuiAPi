@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
   const backendHost = process.env.APP_HOST || (env.APP_HOST && env.APP_HOST !== '0.0.0.0' ? env.APP_HOST : '127.0.0.1')
   const backendTarget = `http://${backendHost}:${backendPort}`
 
+
   const frontendPort = parseInt(process.env.PORT || env.PORT || '15005')
 
   return {

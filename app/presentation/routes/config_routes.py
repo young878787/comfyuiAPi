@@ -170,3 +170,4 @@ async def get_comfyui_checkpoints():
         return models
     except Exception:
         return ["JANIMA_v10.safetensors", "qwen_image_fp8_e4m3fn.safetensors"]
+
