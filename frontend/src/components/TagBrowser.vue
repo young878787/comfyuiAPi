@@ -464,14 +464,9 @@ onMounted(loadData)
 /* Category Tabs */
 .category-tabs {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 6px 4px;
   padding: 2px 0;
-  scrollbar-width: none;
-}
-
-.category-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .cat-tab {
@@ -502,14 +497,9 @@ onMounted(loadData)
 /* Subgroup Tabs */
 .subgroup-tabs {
   display: flex;
-  gap: 4px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  gap: 6px 4px;
   padding: 2px 0;
-  scrollbar-width: none;
-}
-
-.subgroup-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .sub-tab {

@@ -126,6 +126,37 @@ ANIMA_DESIGNER_TEMPLATE = PromptTemplate(
 
 ---
 
+## Anima 提示詞三段式架構
+
+提示詞嚴格分為三大段落，依序輸出，段落之間以換行分隔：
+
+### 段落 A：前導詞（Preamble）
+品質標籤、主體數量、作品系列、角色名稱。
+這段建立畫面的基本錨定。
+
+### 段落 B：人物特徵與服裝（Character Definition）
+**逐角色分組**，每位角色的定義包含：
+- **外貌**：髮色、髮型、眼色、瞳孔特徵、臉部特徵
+- **表情**：表情描述（blush, smile, embarrassed expression 等）
+- **服裝**：衣著、配件、材質細節
+
+多角色時，以 `角色名:` 作為分組前綴，讓每位角色的特徵自成一組。
+**絕對不要把表情、服裝混入段落 C 的動作敘事中。**
+
+### 段落 C：動作敘事與場景（Action & Scene）
+- **動作/姿勢**：簡短精準地描述角色的動態與互動
+- **視角/視線**：looking at viewer, from above 等
+- **環境**：場景、時間、背景元素
+- **光影**：主光、環境光
+- **風格**：上色風格、構圖
+
+此段落的自然語言描述保持 **2~3 句**，精準描述：
+1. 角色之間的互動關係與動態
+2. 場景氛圍
+不要重複段落 B 已定義的外貌和服裝細節。
+
+---
+
 ## Anima 提示詞處理流程
 
 ### 步驟 1：輸入解析
@@ -134,49 +165,50 @@ ANIMA_DESIGNER_TEMPLATE = PromptTemplate(
 - 還原跳脫字元：`\\(` → `(`，`\\)` → `)`。
 - 解讀使用者想法中的意圖，判斷哪些區塊需要修改、哪些保持不動。
 
-### 步驟 2：Tag 分類
-將所有 tag 分入以下區塊（輸出時嚴格按此順序排列）：
+### 步驟 2：Tag 分類（按三段式歸類）
 
+**段落 A — 前導詞：**
 1. **meta**：品質與元標籤
-2. **subject**：主體數量（1girl, 1boy, solo, multiple girls 等）
-3. **franchise**：作品/系列名（hololive, honkai: star rail, blue archive 等）
-4. **character**：角色名（uruha rushia, march 7th 等）
-5. **appearance**：外貌特徵（髮色、髮型、眼睛、體型、臉部特徵）
-6. **outfit**：服裝、配件、材質細節
-7. **pose**：姿勢、手部動作、視角、視線、表情
-8. **environment**：場景、時間、地面、背景元素
-9. **lighting**：主光、邊光、氛圍光
-10. **style**：上色風格、構圖
+2. **subject**：主體數量（1girl, 2girls, solo, multiple girls 等）
+3. **franchise**：作品/系列名（konosuba, yofukashi no uta 等）
+4. **character**：角色名（megumin, nazuna nanakusa 等）
+
+**段落 B — 人物特徵與服裝（逐角色分組）：**
+5. **appearance**：外貌特徵（髮色、髮型、眼色、瞳孔、臉部特徵）
+6. **expression**：表情（blush, smile, embarrassed expression, mischievous smile 等）
+7. **outfit**：服裝、配件、材質細節
+
+**段落 C — 動作敘事與場景：**
+8. **action**：動作、姿勢、角色互動
+9. **gaze**：視角、視線方向
+10. **environment**：場景、時間、地面、背景元素
+11. **lighting**：主光、邊光、氛圍光
+12. **style**：上色風格、構圖
 
 ### 步驟 3：修改判斷（有原始提示詞時）
 - 逐一比對原始提示詞中各區塊的 tag。
 - **使用者想法沒有提到的區塊 → 完整保留原始 tag**。
 - **使用者想法明確提到要改變的區塊 → 替換或補充對應 tag**。
-- 例：想法說「換成紅色長髮」→ 只修改 appearance 區塊的 hair_color 和 hair_style，其餘全部不動。
+- 例：想法說「換成紅色長髮」→ 只修改該角色 appearance 的 hair_color 和 hair_style，其餘全部不動。
 
 ### 步驟 4：品質標籤收斂
 不論使用者原始提示詞中有多少品質相關的 tag，統一收斂為以下標準組合之一：
 
 | 用途 | 標準組合 |
 |------|---------|
-| 最高品質（預設） | `masterpiece, best quality, score_7, safe, newest, highres` |
-| 官方風格 | `official art, masterpiece, best quality, score_9, safe` |
-| 截圖風格 | `anime screenshot, score_8, score_7, safe, year 2025` |
+| 最高品質（預設） | `masterpiece, best quality, score_7, newest, highres` |
+| 官方風格 | `official art, masterpiece, best quality, score_9` |
+| 截圖風格 | `anime screenshot, score_8, score_7, year 2025` |
 
 預設使用「最高品質」組合，除非使用者明確要求其他風格。
 
-### 步驟 5：自然語言描述生成
-在 tag 區塊之後，生成 2~4 句英文自然語言描述，遵循以下模板：
-
-1. **主體句**：A [style] anime illustration of [character/subject] in [environment] at [time].
-2. **姿勢句**：[Subject pronoun] is [pose/action], [view/gaze].
-3. **服裝句**：[Subject pronoun] wears [outfit summary] with [key accessory/details].
-4. **氛圍句**：The scene is lit by [lighting], creating a [mood] atmosphere.
+### 步驟 5：自然語言敘事生成（段落 C 尾段）
+在段落 C 的 tag 之後，生成 2~3 句英文自然語言描述：
 
 規則：
-- 自然語言描述不要逐字重複 tag 區塊的內容。
-- 重點補充 tag 難以表達的「關係」、「構圖」與「情緒」。
-- 保持 2~4 句，不要寫成小說。
+- **不要重複段落 B 的外貌和服裝 tag**，那些已經定義過了。
+- 重點描述 tag 難以表達的「角色互動關係」、「動態感」與「情緒氛圍」。
+- 保持簡短精準即可，不要寫成小說。
 
 ---
 
@@ -186,14 +218,15 @@ ANIMA_DESIGNER_TEMPLATE = PromptTemplate(
 
 [FINAL_PROMPT]
 ```
-[meta 標籤], [subject 標籤], [character 標籤], [franchise 標籤], [appearance 標籤], [outfit 標籤], [pose 標籤], [environment 標籤], [lighting 標籤], [style 標籤].
-
-[2~4 句自然語言描述]
+[段落 A：meta, subject, franchise, character]
+[段落 B：角色1名: appearance, expression, outfit, 角色2名: appearance, expression, outfit, ...]
+[段落 C：action tags, gaze, environment, lighting, style].
+[自然語言敘事]
 ```
 
 ---
 
-## 範例 1：只有想法（從零構建）
+## 範例 1：只有想法（從零構建，單角色）
 
 使用者想法：「穿著黑色制服的少女站在夜晚的霓虹街道上」
 
@@ -201,27 +234,49 @@ ANIMA_DESIGNER_TEMPLATE = PromptTemplate(
 
 [FINAL_PROMPT]
 ```
-masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, short hair, black eyes, black cropped uniform jacket, button-up top, silver buttons, leather trim, standing, hands at sides, looking at viewer, nighttime, city street, streetlights, neon glow, reflective pavement, wet ground, cool ambient light, warm rim light, anime coloring.
-
-A stylish anime illustration of a girl standing alone on a wet neon-lit city street at night. She gazes directly at the viewer with a calm expression, her hands resting naturally at her sides. Her black cropped uniform jacket features silver buttons and leather trim, giving a sharp military-inspired look. Cool ambient lighting and warm rim highlights create a cinematic, moody atmosphere against the reflective pavement.
+masterpiece, best quality, score_7, newest, highres, 1girl, solo,
+short hair, black eyes, calm expression,
+black cropped uniform jacket, button-up top, silver buttons, leather trim,
+standing, hands at sides, looking at viewer, nighttime, city street, streetlights, neon glow, reflective pavement, wet ground, cool ambient light, warm rim light, anime coloring.
+A girl stands alone on a wet neon-lit city street at night, gazing directly at the viewer with quiet composure. Cool ambient lighting and warm rim highlights create a cinematic, moody atmosphere against the reflective pavement.
 ```
 
-## 範例 2：有原始提示詞 + 想法（以原始為基底，只改想法提到的部分）
+## 範例 2：多角色（雙角色，人物特徵前置分組）
+
+使用者想法：「Nazuna 在海灘惡作劇拉下 Megumin 的泳褲」
+
+你的完整回應：
+
+[FINAL_PROMPT]
+```
+masterpiece, best quality, score_7, newest, highres, 2girls, multiple girls, konosuba, megumin, yofukashi no uta, nazuna nanakusa,
+megumin: short hair, black hair, red eyes, spiral pupils, blush, trembling mouth, embarrassed expression, red cute ribbon bikini set, frills,
+nazuna: pink hair, gradient hair, short hair, blunt bangs, braid, rinnegan, blue eyes, sharp fangs, mischievous smile, playful expression, white sexy bikini set, lace details,
+running behind megumin, pulling down panties, holding underwear, dynamic pose, looking at viewer, outdoor, beach, sand, ocean, waves, blue sky, summer day, bright sunlight, natural light, vibrant colors, anime coloring.
+Nazuna dashes behind Megumin on a sunny beach, yanking down her bikini bottoms with a fanged grin while Megumin freezes in flushed embarrassment. Bright summer sunlight and crashing waves frame the playful prank in a lively, teasing atmosphere.
+```
+
+## 範例 3：有原始提示詞 + 想法（以原始為基底，只改想法提到的部分）
 
 原始提示詞：
 ```
-masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, uruha rushia, hololive, mint green hair, short hair, double buns, blush, black face mask, black cropped uniform jacket, button-up top, silver buttons, standing, looking at viewer, nighttime, city street, neon glow, anime coloring.
+masterpiece, best quality, score_7, newest, highres, 1girl, solo, uruha rushia, hololive,
+mint green hair, short hair, double buns, blush, gentle smile,
+black face mask, black cropped uniform jacket, button-up top, silver buttons,
+standing, looking at viewer, nighttime, city street, neon glow, anime coloring.
 ```
 
 使用者想法：「把場景換成櫻花公園，白天」
 
-你的完整回應（注意：角色、外貌、服裝、姿勢全部保留不動，只改 environment 和 lighting）：
+你的完整回應（注意：角色外貌、表情、服裝全部保留不動，只改動作敘事段的 environment 和 lighting）：
 
 [FINAL_PROMPT]
 ```
-masterpiece, best quality, score_7, safe, newest, highres, 1girl, solo, uruha rushia, hololive, mint green hair, short hair, double buns, blush, black face mask, black cropped uniform jacket, button-up top, silver buttons, standing, looking at viewer, daytime, cherry blossom park, sakura trees, petals falling, bright sky, soft natural light, warm sunlight, anime coloring.
-
-A bright anime illustration of Uruha Rushia standing in a cherry blossom park during the day. She looks directly at the viewer with a soft blush, surrounded by falling sakura petals. Her black cropped uniform jacket with silver buttons contrasts beautifully with the pastel pink scenery. Warm sunlight filters through the cherry blossom branches, creating a serene and dreamy springtime atmosphere.
+masterpiece, best quality, score_7, newest, highres, 1girl, solo, uruha rushia, hololive,
+mint green hair, short hair, double buns, blush, gentle smile,
+black face mask, black cropped uniform jacket, button-up top, silver buttons,
+standing, looking at viewer, daytime, cherry blossom park, sakura trees, petals falling, bright sky, soft natural light, warm sunlight, anime coloring.
+Uruha Rushia stands amid falling sakura petals in a sunlit cherry blossom park, her dark uniform contrasting beautifully against the pastel pink scenery. Warm spring light filters through the branches, creating a serene and dreamy atmosphere.
 ```
 """,
     temperature=1.0,
