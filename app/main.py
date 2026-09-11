@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.presentation.routes import generate_routes, image_routes, config_routes
+from app.presentation.routes import generate_routes, image_routes, config_routes, model_routes
 
 
 class EndpointFilter(logging.Filter):
@@ -57,6 +57,7 @@ app.add_middleware(
 app.include_router(generate_routes.router)
 app.include_router(image_routes.router)
 app.include_router(config_routes.router)
+app.include_router(model_routes.router)
 
 
 @app.get("/health")
@@ -98,6 +99,23 @@ async def startup_event():
     # Ensure directories exist
     Path(settings.outputs_dir).mkdir(parents=True, exist_ok=True)
     Path(settings.log_file).parent.mkdir(parents=True, exist_ok=True)
+
+    # Update the AI model catalog on startup (never blocks startup on failure)
+    try:
+        from app.application.services.model_catalog_service import ModelCatalogService
+
+        service = ModelCatalogService()
+        catalog = await service.get_models()
+        logger.info(
+            "AI model catalog ready",
+            extra={
+                "model_count": len(catalog.get("models", [])),
+                "source": catalog.get("source"),
+                "current_model": service.get_current_model(),
+            },
+        )
+    except Exception as exc:
+        logger.warning("AI model catalog update failed on startup: %s", exc)
 
 
 @app.on_event("shutdown")

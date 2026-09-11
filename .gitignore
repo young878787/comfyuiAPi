@@ -21,6 +21,8 @@ output/
 tmp/
 temp/
 *.tmp
+config/ai_models.json
+config/runtime_config.json
 
 # 環境變數（保密）
 .env

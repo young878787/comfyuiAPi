@@ -40,6 +40,22 @@ class Settings(BaseSettings):
         default="disabled",
         validation_alias=AliasChoices("opencode_thinking", "OPENCODE_THINKING", "OPENCODE_GO_THINKING"),
     )
+    opencode_session_id: str = Field(
+        default="",
+        validation_alias=AliasChoices("opencode_session_id", "OPENCODE_SESSION_ID", "OPENCODE_GO_SESSION_ID"),
+    )
+    opencode_models_url: str = Field(
+        default="https://opencode.ai/zen/go/v1/models",
+        validation_alias=AliasChoices(
+            "opencode_models_url",
+            "OPENCODE_MODELS_URL",
+            "OPENCODE_GO_MODELS_URL",
+        ),
+    )
+    # Model catalog cache & runtime selection storage
+    ai_models_cache_file: str = "./config/ai_models.json"
+    ai_models_cache_ttl_hours: float = 24.0
+    runtime_config_file: str = "./config/runtime_config.json"
 
     # Google AI Studio API
     google_api_key: str = ""

@@ -7,6 +7,7 @@
 ## 功能特色
 
 - **AI 多模態對話** — 支援文字與圖片輸入，可附加圖片讓 AI 分析
+- **實時 AI 模型切換** — 工作流模組下方可直接切換 OpenCode Go 模型（glm / kimi / deepseek / qwen / minimax / grok 等），無需重啟，選擇自動持久化
 - **圖片生成** — 透過 ComfyUI API 生成角色圖片，支援完整參數調整
 - **Session 管理** — 多對話 Session，完整保存聊天記錄與生成圖片
 - **思考過程顯示** — AI 的 `<thought>` 推理過程可折疊查看
@@ -214,7 +215,7 @@ comfyuiAPi/
 │   ├── config.py               # Pydantic 設定
 │   ├── server.py               # 後端啟動入口（讀取 .env host/port）
 │   ├── application/
-│   │   ├── services/           # 業務邏輯
+│   │   ├── services/           # 業務邏輯（chat/generate/image/model_catalog）
 │   │   └── dtos/               # 資料傳輸物件
 │   ├── domain/
 │   │   ├── models/             # 領域模型
@@ -223,12 +224,14 @@ comfyuiAPi/
 │   │   ├── adapters/           # AI 適配器（OpenCode / Google / ComfyUI）
 │   │   └── repositories/       # 資料儲存
 │   └── presentation/
-│       └── routes/             # API 路由
+│       └── routes/             # API 路由（generate/image/config/model...）
+│
+├── config/                     # 執行期快取（ai_models.json / runtime_config.json，gitignored）
 │
 ├── frontend/                   # Vue 3 + Vite 前端
 │   ├── src/
 │   │   ├── views/              # ChatView.vue, DrawView.vue
-│   │   ├── components/         # SessionSidebar.vue, MessageBubble.vue
+│   │   ├── components/         # SessionSidebar.vue, AiModelSelector.vue 等
 │   │   ├── stores/             # sessionStore.js（共享狀態）
 │   │   ├── router/             # vue-router
 │   │   └── utils/              # thoughtFilter.js
@@ -270,6 +273,20 @@ comfyuiAPi/
 | `GET` | `/api/image/download/{session_id}/{filename}` | 下載圖片 |
 | `GET` | `/api/image/list/{session_id}` | 列出 Session 圖片 |
 
+### AI Models（實時模型切換）
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| `GET` | `/api/ai/models` | 取得可用模型清單（快取優先）+ 當前模型 |
+| `POST` | `/api/ai/models/current` | 切換當前 AI 模型，body: `{"model_id": "glm-5.3-flash"}` |
+| `GET` | `/api/ai/models/current` | 取得當前模型 ID |
+| `POST` | `/api/ai/models/refresh` | 強制重新呼叫 OpenCode Go API 更新清單 |
+
+> [!NOTE]
+> - 模型清單由後端啟動時自動呼叫 `https://opencode.ai/zen/go/v1/models` 更新，快取於 `config/ai_models.json`（TTL 24 小時）；API 失敗時自動退回快取。
+> - 切換的模型寫入 `config/runtime_config.json`，重啟後仍生效；刪除該檔即回復 `.env` 的 `OPENCODE_MODEL` 預設值。
+> - 後端會依模型家族自動選擇端點：glm/kimi/deepseek/longcat/mimo/hy → `chat/completions`、qwen/minimax → `messages`、grok/gpt/muse → `responses`，payload 格式自動轉換。
+> - `OPENCODE_THINKING` 參數僅對支援的模型家族（glm / deepseek / kimi）送出，其他模型自動省略；若伺服器仍拒絕會自動移除該參數重試。
+
 ## 環境變數說明
 
 完整範本見 `.env.example`。常用項目：
@@ -278,6 +295,9 @@ comfyuiAPi/
 |------|------|--------|
 | `AI_PROVIDER` | `opencode` 或 `google` | `opencode` |
 | `OPENCODE_API_KEY` | OpenCode API Key | — |
+| `OPENCODE_MODEL` | 預設模型 ID（可被 `config/runtime_config.json` 覆蓋） | `deepseek-v4-flash` |
+| `OPENCODE_MODELS_URL` | 模型清單 API（OpenCode Go 端點） | `https://opencode.ai/zen/go/v1/models` |
+| `OPENCODE_THINKING` | `enabled` / `disabled`（僅支援 thinking 的模型家族適用） | `disabled` |
 | `GOOGLE_API_KEY` | Google AI API Key | — |
 | `PROMPT_TEMPLATE` | `qwen` 或 `anima` | `qwen` |
 | `COMFYUI_API_URL` | ComfyUI 地址 | `http://127.0.0.1:8188` |
@@ -298,6 +318,11 @@ comfyuiAPi/
 **前端顯示空白**
 - 確認已執行 `npm run build`（生產模式）
 - 或確認 Vite dev server 已啟動（開發模式）
+
+**前端模型選單沒有載入**
+- 後端啟動需數秒，選單會自動重試與背景輪詢；若仍空白，按選單右側 ⟳ 手動刷新
+- 確認後端為新版本（log 出現 `AI model catalog ready`）
+- 若重新執行 run_webui.bat，瀏覽器分頁須按 Ctrl+F5 重新載入（vite 重啟後舊分頁不會自動更新）
 
 **查看詳細錯誤**
 ```bash

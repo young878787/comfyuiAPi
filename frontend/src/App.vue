@@ -60,6 +60,11 @@
             />
           </div>
 
+          <!-- AI Model Selector -->
+          <div class="panel-section">
+            <AiModelSelector />
+          </div>
+
           <!-- Prompt Controls -->
           <div class="panel-section">
             <PromptPanel
@@ -116,6 +121,7 @@
 import { ref, onMounted, computed } from 'vue'
 import StatusIndicator from './components/StatusIndicator.vue'
 import WorkflowSelector from './components/WorkflowSelector.vue'
+import AiModelSelector from './components/AiModelSelector.vue'
 import PromptPanel from './components/PromptPanel.vue'
 import Img2ImgPanel from './components/Img2ImgPanel.vue'
 import ParameterForm from './components/ParameterForm.vue'

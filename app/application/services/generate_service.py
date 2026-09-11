@@ -189,7 +189,10 @@ class GenerateService:
                     self.ai_adapter = create_ai_adapter()
 
                 ai_provider = settings.ai_provider
-                ai_model = settings.google_model if ai_provider == "google" else settings.opencode_model
+                # Use the adapter's resolved model so runtime switching is reflected
+                ai_model = getattr(self.ai_adapter, "model", "") or (
+                    settings.google_model if ai_provider == "google" else settings.opencode_model
+                )
 
                 # Fetch template name
                 template_name = "anima" if "anima" in request.workflow.lower() else "qwen"

@@ -67,3 +67,29 @@ class OpenFolderRequest(BaseModel):
     date_str: str
     filename: Optional[str] = None
     workflow: Optional[str] = "anima"
+
+
+class ModelInfo(BaseModel):
+    """A single AI model entry from the provider catalog."""
+
+    id: str
+    owned_by: Optional[str] = None
+    created: Optional[int] = None
+
+
+class ModelSelectRequest(BaseModel):
+    """Request body for switching the active AI model at runtime."""
+
+    model_config = {"protected_namespaces": ()}
+
+    model_id: str = Field(..., min_length=1, description="Model ID, e.g. deepseek-v4-flash")
+
+
+class ModelCatalogResponse(BaseModel):
+    """Model catalog plus the currently selected model."""
+
+    fetched_at: int
+    source: str
+    stale: bool = False
+    models: List[ModelInfo]
+    current_model: str

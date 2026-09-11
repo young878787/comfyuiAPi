@@ -4,11 +4,17 @@ from copy import deepcopy
 import json
 import os
 import re
+import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
 import requests
 from dotenv import load_dotenv
+
+
+def _default_session_id() -> str:
+    """OpenCode Go requires a stable x-opencode-session ID per conversation."""
+    return os.getenv("OPENCODE_SESSION_ID", os.getenv("OPENCODE_GO_SESSION_ID", "")) or uuid.uuid4().hex
 
 
 class TranslationMemoryResponseError(ValueError):
@@ -31,6 +37,7 @@ class TranslationMemoryClient:
     timeout: float = 180.0
     max_tokens: int = 4096
     temperature: float = 0.1
+    session_id: str = field(default_factory=_default_session_id, repr=False, compare=False)
     _response_failures: list[dict[str, Any]] = field(default_factory=list, init=False, repr=False, compare=False)
 
     def record_response_failure(self, diagnostics: dict[str, Any]) -> None:
@@ -47,6 +54,7 @@ class TranslationMemoryClient:
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
+                "x-opencode-session": self.session_id,
             },
             json={
                 "model": self.model,

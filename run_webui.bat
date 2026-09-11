@@ -18,7 +18,7 @@ echo [Auto-Detect] Scanning for ComfyUI Server...
 echo.
 
 set "_COMFY_PORT="
-for %%P in (8188 8080 18080 8189 8190 18888 28188) do (
+for %%P in (8080 18080 8189 8190 18888 28188) do (
     if not defined _COMFY_PORT (
         for /f %%A in ('curl -s -o nul -w "%%{http_code}" --connect-timeout 2 http://127.0.0.1:%%P/system_stats 2^>nul') do (
             if "%%A"=="200" (
